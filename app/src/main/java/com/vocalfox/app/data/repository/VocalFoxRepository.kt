@@ -14,13 +14,19 @@ class VocalFoxRepository(
     private val packLoader: PackLoader
 ) {
     private val cachedPacks: Map<String, LanguagePack> by lazy {
-        packLoader.loadAllLanguagePacks()
+        try {
+            packLoader.loadAllLanguagePacks()
+        } catch (_: Throwable) {
+            mapOf("es" to PackLoader.createEmergencyPack())
+        }
     }
 
     fun getAllPacks(): Map<String, LanguagePack> = cachedPacks
 
     fun getPack(languageCode: String): LanguagePack {
-        return cachedPacks[languageCode] ?: cachedPacks.values.first()
+        return cachedPacks[languageCode]
+            ?: cachedPacks.values.firstOrNull()
+            ?: PackLoader.createEmergencyPack()
     }
 
     fun observeProgress(languageCode: String): Flow<List<UserProgressEntity>> =

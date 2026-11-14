@@ -3,7 +3,6 @@ package com.vocalfox.app
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.activity.viewModels
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -14,7 +13,9 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.GraphicEq
 import androidx.compose.material.icons.outlined.HistoryEdu
@@ -36,6 +37,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.ViewModelProvider
 import com.vocalfox.app.ui.i18n.AppStrings
 import com.vocalfox.app.ui.screens.GrammarSyntaxScreen
 import com.vocalfox.app.ui.screens.HomeScreen
@@ -49,14 +51,46 @@ import com.vocalfox.app.ui.theme.VocalFoxType
 import com.vocalfox.app.ui.viewmodel.VocalFoxViewModel
 
 class MainActivity : ComponentActivity() {
-    private val viewModel: VocalFoxViewModel by viewModels()
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        val viewModelResult = runCatching {
+            ViewModelProvider(
+                this,
+                ViewModelProvider.AndroidViewModelFactory.getInstance(application)
+            )[VocalFoxViewModel::class.java]
+        }
+
         setContent {
-            val isDark by viewModel.isDarkMode.collectAsState()
-            VocalFoxTheme(darkTheme = isDark) {
-                VocalFoxRootApp(viewModel = viewModel)
+            val vm = viewModelResult.getOrNull()
+            if (vm != null) {
+                val isDark by vm.isDarkMode.collectAsState()
+                VocalFoxTheme(darkTheme = isDark) {
+                    VocalFoxRootApp(viewModel = vm)
+                }
+            } else {
+                val err = viewModelResult.exceptionOrNull()?.stackTraceToString() ?: "Unknown initialization error"
+                VocalFoxTheme(darkTheme = false) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(VocalFoxTheme.colors.background)
+                            .verticalScroll(rememberScrollState())
+                            .padding(24.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        Text(
+                            text = "VocalFox Startup Diagnostic",
+                            style = VocalFoxType.PageTitle,
+                            color = VocalFoxTheme.colors.negative
+                        )
+                        Text(
+                            text = err,
+                            style = VocalFoxType.MetaMono,
+                            color = VocalFoxTheme.colors.primaryText
+                        )
+                    }
+                }
             }
         }
     }
