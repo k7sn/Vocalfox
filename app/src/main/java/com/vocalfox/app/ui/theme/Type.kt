@@ -6,78 +6,66 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 
-/**
- * Unslop Typography Scale
- * - Weights restricted to 400 (Normal), 500 (Medium), and rare 600 (SemiBold).
- * - Never 700-900, never uppercase tracked labels, never negative letter-spacing on small text.
- * - Tabular figures (`tnum`) enabled on numeric & phonetic styles.
- */
 object VocalFoxType {
     val Sans = FontFamily.SansSerif
     val Mono = FontFamily.Monospace
 
     val PageTitle = TextStyle(
         fontFamily = Sans,
-        fontWeight = FontWeight.Medium,
-        fontSize = 28.sp,
-        lineHeight = 34.sp,
-        letterSpacing = (-0.3).sp
+        fontWeight = FontWeight.SemiBold,
+        fontSize = 24.sp,
+        lineHeight = 30.sp,
+        letterSpacing = (-0.2).sp
     )
 
     val SectionTitle = TextStyle(
         fontFamily = Sans,
-        fontWeight = FontWeight.Medium,
-        fontSize = 20.sp,
-        lineHeight = 28.sp,
-        letterSpacing = 0.sp
+        fontWeight = FontWeight.SemiBold,
+        fontSize = 18.sp,
+        lineHeight = 24.sp
     )
 
     val CardFigure = TextStyle(
-        fontFamily = Mono,
-        fontWeight = FontWeight.Medium,
-        fontSize = 28.sp,
-        lineHeight = 32.sp,
+        fontFamily = Sans,
+        fontWeight = FontWeight.SemiBold,
+        fontSize = 26.sp,
+        lineHeight = 30.sp,
         fontFeatureSettings = "tnum"
     )
 
     val SentenceDisplay = TextStyle(
         fontFamily = Sans,
         fontWeight = FontWeight.Medium,
-        fontSize = 22.sp,
-        lineHeight = 32.sp,
-        letterSpacing = 0.sp
+        fontSize = 20.sp,
+        lineHeight = 28.sp
     )
 
     val Body = TextStyle(
         fontFamily = Sans,
         fontWeight = FontWeight.Normal,
         fontSize = 15.sp,
-        lineHeight = 22.sp,
-        letterSpacing = 0.sp
+        lineHeight = 22.sp
     )
 
     val BodyMedium = TextStyle(
         fontFamily = Sans,
         fontWeight = FontWeight.Medium,
         fontSize = 15.sp,
-        lineHeight = 22.sp,
-        letterSpacing = 0.sp
+        lineHeight = 21.sp
     )
 
     val SecondaryCaption = TextStyle(
         fontFamily = Sans,
         fontWeight = FontWeight.Normal,
         fontSize = 13.sp,
-        lineHeight = 20.sp,
-        letterSpacing = 0.sp
+        lineHeight = 18.sp
     )
 
     val MetaMono = TextStyle(
         fontFamily = Mono,
-        fontWeight = FontWeight.Normal,
+        fontWeight = FontWeight.Medium,
         fontSize = 12.sp,
         lineHeight = 16.sp,
-        letterSpacing = 0.1.sp,
         fontFeatureSettings = "tnum"
     )
 }
