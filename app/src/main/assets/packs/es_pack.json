@@ -1,0 +1,477 @@
+{
+  "languageCode": "es",
+  "languageName": {
+    "en": "Spanish",
+    "it": "Spagnolo"
+  },
+  "availableVoices": [
+    {
+      "voiceId": "es_ES-carlfm-high",
+      "displayName": "Carlos (Castilian)",
+      "gender": "Male",
+      "timbre": "Warm baritone",
+      "onnxFileName": "es_ES-carlfm-high.onnx",
+      "sampleRateHz": 22050
+    },
+    {
+      "voiceId": "es_MX-ald-medium",
+      "displayName": "Elena (Neutral Studio)",
+      "gender": "Female",
+      "timbre": "Crisp mezzo",
+      "onnxFileName": "es_MX-ald-medium.onnx",
+      "sampleRateHz": 22050
+    }
+  ],
+  "grammarExercises": [
+    {
+      "id": "es_a1_syn_01",
+      "cefr": "A1",
+      "title": {
+        "en": "Essence vs temporary state (ser and estar)",
+        "it": "Essenza vs stato temporaneo (ser ed estar)"
+      },
+      "promptSentence": "La biblioteca central ___ cerrada hoy por obras.",
+      "blankTarget": "está",
+      "distractors": ["es", "son", "están"],
+      "scrambleTokens": ["La", "biblioteca", "central", "está", "cerrada", "hoy"],
+      "syntaxTokens": [
+        {
+          "surface": "La biblioteca",
+          "roleCode": "SUBJ",
+          "ipa": "la βiβljoˈteka",
+          "gloss": {
+            "en": "Feminine singular subject noun phrase",
+            "it": "Sintagma nominale soggetto femminile singolare"
+          }
+        },
+        {
+          "surface": "está",
+          "roleCode": "VERB",
+          "ipa": "esˈta",
+          "gloss": {
+            "en": "Estar (3rd sg): resulting state or temporary condition",
+            "it": "Estar (3ª sg): stato risultante o condizione temporanea"
+          }
+        },
+        {
+          "surface": "cerrada",
+          "roleCode": "OBJ",
+          "ipa": "θeˈraða",
+          "gloss": {
+            "en": "Adjectival participle agreeing in gender and number",
+            "it": "Participio aggettivale concordato in genere e numero"
+          }
+        }
+      ],
+      "explanation": {
+        "en": "Use estar with past participles (cerrada, abierta) to express a resulting state rather than an inherent characteristic.",
+        "it": "Si usa estar con i participi passati (cerrada, abierta) per esprimere uno stato risultante e non una qualità intrinseca."
+      }
+    },
+    {
+      "id": "es_a2_syn_01",
+      "cefr": "A2",
+      "title": {
+        "en": "Aspectual contrast: indefinido vs imperfecto",
+        "it": "Contrasto aspettuale: indefinido vs imperfecto"
+      },
+      "promptSentence": "Mientras yo ___ el informe, se cortó la electricidad.",
+      "blankTarget": "redactaba",
+      "distractors": ["redacté", "redacto", "había redactado"],
+      "scrambleTokens": ["Mientras", "yo", "redactaba", "el", "informe"],
+      "syntaxTokens": [
+        {
+          "surface": "Mientras",
+          "roleCode": "CONN",
+          "ipa": "ˈmjentɾas",
+          "gloss": {
+            "en": "Simultaneous temporal conjunction",
+            "it": "Congiunzione temporale di simultaneità"
+          }
+        },
+        {
+          "surface": "redactaba",
+          "roleCode": "VERB",
+          "ipa": "reðakˈtaβa",
+          "gloss": {
+            "en": "Imperfecto: ongoing background frame",
+            "it": "Imperfetto: azione di sfondo in corso di svolgimento"
+          }
+        },
+        {
+          "surface": "se cortó",
+          "roleCode": "V2",
+          "ipa": "se koɾˈto",
+          "gloss": {
+            "en": "Indefinido: punctual interrupting event",
+            "it": "Indefinido: evento puntuale che interrompe l'azione"
+          }
+        }
+      ],
+      "explanation": {
+        "en": "The imperfect (redactaba) establishes the ongoing background action, whereas the preterite (se cortó) marks the punctual interruption.",
+        "it": "L'imperfetto (redactaba) delinea lo sfondo durativo, mentre il pretérito indefinido (se cortó) indica l'evento puntuale."
+      }
+    },
+    {
+      "id": "es_b1_syn_01",
+      "cefr": "B1",
+      "title": {
+        "en": "Present subjunctive in negative opinion clauses",
+        "it": "Congiuntivo presente nelle frasi di opinione negata"
+      },
+      "promptSentence": "No creo que el tren ___ con retraso esta tarde.",
+      "blankTarget": "llegue",
+      "distractors": ["llega", "llegará", "llegó"],
+      "scrambleTokens": ["No", "creo", "que", "el", "tren", "llegue"],
+      "syntaxTokens": [
+        {
+          "surface": "No creo que",
+          "roleCode": "CONN",
+          "ipa": "no ˈkɾeo ke",
+          "gloss": {
+            "en": "Negated epistemic matrix trigger",
+            "it": "Matrice epistemica negata (attivatore del congiuntivo)"
+          }
+        },
+        {
+          "surface": "el tren",
+          "roleCode": "SUBJ",
+          "ipa": "el ˈtɾen",
+          "gloss": {
+            "en": "Subordinate clause subject",
+            "it": "Soggetto della proposizione subordinata"
+          }
+        },
+        {
+          "surface": "llegue",
+          "roleCode": "SUBJ_MOD",
+          "ipa": "ˈʎeɣe",
+          "gloss": {
+            "en": "Present subjunctive of llegar (-ar -> -gue orthographic shift)",
+            "it": "Congiuntivo presente di llegar (mutamento grafico -ar -> -gue)"
+          }
+        }
+      ],
+      "explanation": {
+        "en": "Negated verbs of perception or belief (no creer que, no pensar que) require the subjunctive mood in the subordinate clause.",
+        "it": "I verbi di opinione alla forma negativa (no creer que, no pensar que) richiedono obbligatoriamente il congiuntivo nella subordinata."
+      }
+    },
+    {
+      "id": "es_b2_syn_01",
+      "cefr": "B2",
+      "title": {
+        "en": "Counterfactual conditionals with pluperfect subjunctive",
+        "it": "Periodo ipotetico dell'irrealtà con trapassato congiuntivo"
+      },
+      "promptSentence": "Si ___ las cláusulas a tiempo, habríamos evitado el litigio.",
+      "blankTarget": "hubiéramos revisado",
+      "distractors": ["revisábamos", "habremos revisado", "revisaríamos"],
+      "scrambleTokens": ["Si", "hubiéramos", "revisado", "las", "cláusulas", "habríamos", "evitado"],
+      "syntaxTokens": [
+        {
+          "surface": "Si hubiéramos revisado",
+          "roleCode": "SUBJ_MOD",
+          "ipa": "si uˈβjeɾamos reβiˈsaðo",
+          "gloss": {
+            "en": "Protasis: Pluperfect subjunctive (-ra/-se) for past counterfactual",
+            "it": "Protasi: Congiuntivo trapassato (-ra/-se) per irrealtà nel passato"
+          }
+        },
+        {
+          "surface": "las cláusulas",
+          "roleCode": "OBJ",
+          "ipa": "las ˈklawsulas",
+          "gloss": {
+            "en": "Direct object noun phrase",
+            "it": "Complemento oggetto diretto"
+          }
+        },
+        {
+          "surface": "habríamos evitado",
+          "roleCode": "VERB",
+          "ipa": "aˈβɾiamos eβiˈtaðo",
+          "gloss": {
+            "en": "Apodosis: Compound conditional",
+            "it": "Apodosi: Condizionale composto"
+          }
+        }
+      ],
+      "explanation": {
+        "en": "In B2 past counterfactuals, the 'si' protasis takes the pluperfect subjunctive (hubiéramos revisado) and never the conditional.",
+        "it": "Nel periodo ipotetico del terzo tipo (B2), la protasi con 'si' richiede il trapassato congiuntivo (hubiéramos revisado) e mai il condizionale."
+      }
+    }
+  ],
+  "writingExercises": [
+    {
+      "id": "es_a1_wrt_01",
+      "cefr": "A1",
+      "sourcePrompt": {
+        "en": "Translate: We want two coffees with warm milk, please.",
+        "it": "Traduci: Vorremmo due caffè con latte caldo, per favore."
+      },
+      "referenceTargets": [
+        "Queremos dos cafés con leche caliente, por favor."
+      ],
+      "requiredMorphemes": ["queremos", "dos", "leche", "caliente"],
+      "grammarRuleTitle": {
+        "en": "Stem-changing verb querer (e -> ie) and post-nominal adjectives",
+        "it": "Verbo dittongato querer (e -> ie) e aggettivi post-nominali"
+      },
+      "jitFeedback": {
+        "en": "Remember that descriptive adjectives like 'caliente' follow the noun 'leche' in unmarked Spanish word order.",
+        "it": "Ricorda che gli aggettivi qualificativi come 'caliente' seguono il sostantivo 'leche' nell'ordine canonico spagnolo."
+      }
+    },
+    {
+      "id": "es_a2_wrt_01",
+      "cefr": "A2",
+      "sourcePrompt": {
+        "en": "Translate: Yesterday I gave the keys to my neighbor before leaving.",
+        "it": "Traduci: Ieri ho dato le chiavi al mio vicino prima di uscire."
+      },
+      "referenceTargets": [
+        "Ayer le di las llaves a mi vecino antes de salir."
+      ],
+      "requiredMorphemes": ["ayer", "le di", "llaves", "antes de salir"],
+      "grammarRuleTitle": {
+        "en": "Clitic doubling (le) and irregular preterite dar (di)",
+        "it": "Reduplicazione pronominale (le) e indefinido irregolare di dar (di)"
+      },
+      "jitFeedback": {
+        "en": "Spanish requires the redundant indirect object clitic 'le' before 'di' even when 'a mi vecino' is explicitly stated.",
+        "it": "Lo spagnolo richiede il pronome clitico ridondante 'le' prima di 'di' anche quando 'a mi vecino' è espresso esplicitamente."
+      }
+    },
+    {
+      "id": "es_b1_wrt_01",
+      "cefr": "B1",
+      "sourcePrompt": {
+        "en": "Translate: When you arrive at the station, call me so we can coordinate.",
+        "it": "Traduci: Quando arrivi alla stazione, chiamami affinché possiamo coordinarci."
+      },
+      "referenceTargets": [
+        "Cuando llegues a la estación, llámame para que podamos coordinarnos."
+      ],
+      "requiredMorphemes": ["cuando llegues", "llámame", "para que", "podamos"],
+      "grammarRuleTitle": {
+        "en": "Future-projected temporal clauses (cuando + subjunctive) and purpose clauses (para que)",
+        "it": "Temporali proiettate nel futuro (cuando + congiuntivo) e finali (para que)"
+      },
+      "jitFeedback": {
+        "en": "Temporal conjunctions like 'cuando' and final conjunctions like 'para que' govern the present subjunctive (llegues, podamos) when referring to future events.",
+        "it": "Le congiunzioni temporali ('cuando') riferite al futuro e quelle finali ('para que') reggono sempre il congiuntivo (llegues, podamos)."
+      }
+    },
+    {
+      "id": "es_b2_wrt_01",
+      "cefr": "B2",
+      "sourcePrompt": {
+        "en": "Translate: However complex the negotiation may seem, we would not have signed without auditing the budget.",
+        "it": "Traduci: Per quanto complessa possa sembrare la trattativa, non avremmo firmato senza verificare il bilancio."
+      },
+      "referenceTargets": [
+        "Por muy compleja que parezca la negociación, no habríamos firmado sin auditar el presupuesto."
+      ],
+      "requiredMorphemes": ["por muy", "parezca", "habríamos firmado", "presupuesto"],
+      "grammarRuleTitle": {
+        "en": "Concessive 'por muy + adj + que + subjunctive' and compound conditional",
+        "it": "Costrutto concessivo 'por muy + agg + que + congiuntivo' e condizionale composto"
+      },
+      "jitFeedback": {
+        "en": "Use 'Por muy [adjetivo] que + subjuntivo (parezca)' to express hypothetical concession at B2 register.",
+        "it": "Usa 'Por muy [aggettivo] que + congiuntivo (parezca)' per esprimere una concessiva ipotetica di registro B2."
+      }
+    }
+  ],
+  "pronunciationDrills": [
+    {
+      "id": "es_a1_spk_01",
+      "cefr": "A1",
+      "targetSentence": "El perro corre rápido por el ferrocarril.",
+      "furiganaOrReading": "Alveolar trill /r/ vs tap /ɾ/",
+      "fullIpa": "/el ˈpero ˈkore ˈrapiðo poɾ el ferokaˈril/",
+      "translation": {
+        "en": "The dog runs fast along the railway.",
+        "it": "Il cane corre veloce lungo la ferrovia."
+      },
+      "criticalPhonemes": [
+        {
+          "grapheme": "rr",
+          "ipa": "r",
+          "trapDescription": {
+            "en": "Multi-vibrant alveolar trill: let the tongue tip vibrate 3-4 times against the alveolar ridge using airflow.",
+            "it": "Vibrante multipla alveolare: lascia vibrare l'apice della lingua contro gli alveoli grazie al flusso d'aria."
+          }
+        },
+        {
+          "grapheme": "d",
+          "ipa": "ð",
+          "trapDescription": {
+            "en": "Intervocalic 'd' in 'rápido' softens to a voiced dental approximant [ð], never a hard stop.",
+            "it": "La 'd' intervocalica in 'rápido' si lenisce in approssimante dentale sonora [ð], mai occlusiva dura."
+          }
+        }
+      ],
+      "articulatoryTip": {
+        "en": "Contrast single intervocalic 'r' /ɾ/ in 'por' with the sustained alveolar trill /r/ in 'perro', 'corre', and 'ferrocarril'.",
+        "it": "Contrasta la monovibrante /ɾ/ di 'por' con la vibrante multipla /r/ in 'perro', 'corre' e 'ferrocarril'."
+      }
+    },
+    {
+      "id": "es_a2_spk_01",
+      "cefr": "A2",
+      "targetSentence": "Ayer llevé las llaves bajo la lluvia suave.",
+      "furiganaOrReading": "Palatal lateral/fricative and bilabial approximant /β/",
+      "fullIpa": "/aˈʝeɾ ʎeˈβe las ˈʎaβes ˈbaxo la ˈʎuβja ˈswaβe/",
+      "translation": {
+        "en": "Yesterday I carried the keys under the gentle rain.",
+        "it": "Ieri ho portato le chiavi sotto la pioggia leggera."
+      },
+      "criticalPhonemes": [
+        {
+          "grapheme": "v / b",
+          "ipa": "β",
+          "trapDescription": {
+            "en": "Orthographic 'b' and 'v' are identical in Spanish; between vowels they become a soft bilabial approximant [β].",
+            "it": "Le lettere 'b' e 'v' hanno lo stesso suono in spagnolo; tra vocali diventano un'approssimante bilabiale [β]."
+          }
+        },
+        {
+          "grapheme": "j",
+          "ipa": "x",
+          "trapDescription": {
+            "en": "Voiceless velar fricative in 'bajo': raise the back of the tongue toward the soft palate.",
+            "it": "Fricativa velare sorda in 'bajo': solleva il dorso della lingua verso il velo palatino."
+          }
+        }
+      ],
+      "articulatoryTip": {
+        "en": "Never touch your lower lip with your upper teeth for Spanish 'v' (llevé, llaves, lluvia, suave); keep both lips close without full closure.",
+        "it": "Non poggiare gli incisivi superiori sul labbro inferiore per la 'v' spagnola; avvicina entrambe le labbra senza chiuderle del tutto."
+      }
+    },
+    {
+      "id": "es_b1_spk_01",
+      "cefr": "B1",
+      "targetSentence": "Es imprescindible que analicemos la situación económica.",
+      "furiganaOrReading": "Proparoxytone (esdrújula) stress & interdental/sibilant contrast",
+      "fullIpa": "/es impɾesθinˈdiβle ke analiˈθemos la sitwaˈθjon ekoˈnomika/",
+      "translation": {
+        "en": "It is essential that we analyze the economic situation.",
+        "it": "È imprescindibile che analizziamo la situazione economica."
+      },
+      "criticalPhonemes": [
+        {
+          "grapheme": "c (e/i)",
+          "ipa": "θ",
+          "trapDescription": {
+            "en": "Castilian interdental [θ] or Latin American [s]; keep duration crisp without voicing.",
+            "it": "Interdentale sorda castigliana [θ] o sibilante [s]; mantieni l'attacco sordo e netto."
+          }
+        },
+        {
+          "grapheme": "ó",
+          "ipa": "ˈo",
+          "trapDescription": {
+            "en": "Esdrújula stress on 'económica' falls sharply on the antepenultimate syllable (-nó-).",
+            "it": "Accento sdrucciolo in 'económica' marcato nettamente sulla terzultima sillaba (-nó-)."
+          }
+        }
+      ],
+      "articulatoryTip": {
+        "en": "Maintain vowel purity on unstressed syllables; Spanish vowels never reduce to schwa [ə] even in five-syllable words.",
+        "it": "Mantieni il timbro netto delle cinque vocali atone: in spagnolo le vocali non si riducono mai a indistinte [ə]."
+      }
+    },
+    {
+      "id": "es_b2_spk_01",
+      "cefr": "B2",
+      "targetSentence": "Si hubiéramos previsto las consecuencias, habríamos actuado con mayor prudencia.",
+      "furiganaOrReading": "Connected speech synalepha and diphthongal rhythm",
+      "fullIpa": "/si uˈβjeɾamos pɾeˈβisto las konsekˈwenθjas aˈβɾiamos akˈtwaðo kon maˈʝoɾ pɾuˈðenθja/",
+      "translation": {
+        "en": "Had we foreseen the consequences, we would have acted with greater prudence.",
+        "it": "Se avessimo previsto le conseguenze, avremmo agito con maggiore prudenza."
+      },
+      "criticalPhonemes": [
+        {
+          "grapheme": "si hu-",
+          "ipa": "sju",
+          "trapDescription": {
+            "en": "Synalepha links 'Si' and 'hubiéramos' smoothly into a single prosodic glide without a glottal stop.",
+            "it": "La sinalefe lega 'Si' e 'hubiéramos' in un'unica emissione fluida senza colpo di glottide."
+          }
+        },
+        {
+          "grapheme": "ct",
+          "ipa": "kt",
+          "trapDescription": {
+            "en": "In 'actuado', articulate a light velar-dental transition without epenthetic vowel.",
+            "it": "In 'actuado', pronuncia il nesso consonantico leggero senza assimilazione."
+          }
+        }
+      ],
+      "articulatoryTip": {
+        "en": "Link words across vowel boundaries (synalepha) and sustain a rising intonation peak at 'consecuencias' before the falling apodosis.",
+        "it": "Unisci le vocali a confine di parola (sinalefe) e mantieni il picco intonativo ascendente su 'consecuencias' prima della discesa nell'apodosi."
+      }
+    }
+  ],
+  "scriptCards": [
+    {
+      "symbol": "rr",
+      "scriptCategory": "Phonetics",
+      "readingOrFurigana": "Vibrante múltiple",
+      "romajiOrIpa": "/r/",
+      "meaning": {
+        "en": "Voiced alveolar trill (perro, carro)",
+        "it": "Vibrante alveolare multipla (perro, carro)"
+      },
+      "exampleWord": "ferrocarril",
+      "exampleReading": "/ferokaˈril/",
+      "strokeCount": 2
+    },
+    {
+      "symbol": "ñ",
+      "scriptCategory": "Phonetics",
+      "readingOrFurigana": "Eñe palatal",
+      "romajiOrIpa": "/ɲ/",
+      "meaning": {
+        "en": "Voiced palatal nasal (mañana, otoño)",
+        "it": "Nasale palatale sonora (mañana, otoño)"
+      },
+      "exampleWord": "enseñanza",
+      "exampleReading": "/enseˈɲanθa/",
+      "strokeCount": 2
+    },
+    {
+      "symbol": "ll",
+      "scriptCategory": "Phonetics",
+      "readingOrFurigana": "Elle / Yeísmo",
+      "romajiOrIpa": "/ʎ/ ~ /ʝ/",
+      "meaning": {
+        "en": "Palatal lateral or voiced palatal approximant",
+        "it": "Laterale palatale o approssimante palatale sonora"
+      },
+      "exampleWord": "llave",
+      "exampleReading": "/ˈʎaβe/",
+      "strokeCount": 2
+    },
+    {
+      "symbol": "j / g",
+      "scriptCategory": "Phonetics",
+      "readingOrFurigana": "Jota velar",
+      "romajiOrIpa": "/x/",
+      "meaning": {
+        "en": "Voiceless velar fricative before e/i or any vowel with j",
+        "it": "Fricativa velare sorda davanti a e/i o con la lettera j"
+      },
+      "exampleWord": "ejercicio",
+      "exampleReading": "/exeɾˈθiθjo/",
+      "strokeCount": 1
+    }
+  ]
+}

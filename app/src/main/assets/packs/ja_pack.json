@@ -1,0 +1,566 @@
+{
+  "languageCode": "ja",
+  "languageName": {
+    "en": "Japanese",
+    "it": "Giapponese"
+  },
+  "availableVoices": [
+    {
+      "voiceId": "ja_JP-kokoro-medium",
+      "displayName": "Kokoro (Tokyo Standard)",
+      "gender": "Female",
+      "timbre": "Clear pitch-accurate",
+      "onnxFileName": "ja_JP-kokoro-medium.onnx",
+      "sampleRateHz": 22050
+    },
+    {
+      "voiceId": "ja_JP-kenji-high",
+      "displayName": "Kenji (NHK Broadcast)",
+      "gender": "Male",
+      "timbre": "Warm baritone",
+      "onnxFileName": "ja_JP-kenji-high.onnx",
+      "sampleRateHz": 22050
+    }
+  ],
+  "grammarExercises": [
+    {
+      "id": "ja_a1_syn_01",
+      "cefr": "A1",
+      "title": {
+        "en": "Topic marker は (wa) vs direct object marker を (o)",
+        "it": "Particella di tema は (wa) vs complemento oggetto を (o)"
+      },
+      "promptSentence": "私は毎朝図書館で新聞 ___ 読みます。",
+      "blankTarget": "を",
+      "distractors": ["は", "が", "に"],
+      "scrambleTokens": ["私は", "図書館で", "新聞", "を", "読みます"],
+      "syntaxTokens": [
+        {
+          "surface": "私は",
+          "roleCode": "TOPIC_PART",
+          "ipa": "ɰataɕi ɰa",
+          "gloss": {
+            "en": "Topic noun + particle は (pronounced 'wa')",
+            "it": "Tema della frase + particella は (pronunciata 'wa')"
+          }
+        },
+        {
+          "surface": "図書館で",
+          "roleCode": "PART",
+          "ipa": "toɕokaɴ de",
+          "gloss": {
+            "en": "Location of active action marked by で (de)",
+            "it": "Luogo di svolgimento dell'azione marcato da で (de)"
+          }
+        },
+        {
+          "surface": "新聞を",
+          "roleCode": "OBJ_PART",
+          "ipa": "ɕimbɯɴ o",
+          "gloss": {
+            "en": "Direct object noun (newspaper) + accusative particle を (o)",
+            "it": "Complemento oggetto (giornale) + particella accusativa を (o)"
+          }
+        },
+        {
+          "surface": "読みます",
+          "roleCode": "V-END",
+          "ipa": "jomimasɯ",
+          "gloss": {
+            "en": "Polite non-past SOV clause-final verb (read)",
+            "it": "Verbo finito cortese in posizione finale SOV (leggere)"
+          }
+        }
+      ],
+      "explanation": {
+        "en": "In Japanese SOV syntax, the transitive verb stands at the end (読みます), its direct object is marked by を (新聞を), and the place where the action occurs takes で (図書館で).",
+        "it": "Nella sintassi SOV giapponese, il verbo transitivo chiude la frase (読みます), l'oggetto diretto è marcato da を (新聞を) e il luogo d'azione prende で (図書館で)."
+      }
+    },
+    {
+      "id": "ja_a2_syn_01",
+      "cefr": "A2",
+      "title": {
+        "en": "Benefactive giving and receiving (〜てくれる / 〜てもらう)",
+        "it": "Costrutti benefattivi del dare e ricevere (〜てくれる / 〜てもらう)"
+      },
+      "promptSentence": "先輩が丁寧に新しいシステムを説明して ___。",
+      "blankTarget": "くれました",
+      "distractors": ["あげました", "もらいました", "いきました"],
+      "scrambleTokens": ["先輩が", "丁寧に", "システムを", "説明して", "くれました"],
+      "syntaxTokens": [
+        {
+          "surface": "先輩が",
+          "roleCode": "SUBJ_PART",
+          "ipa": "sempai ɡa",
+          "gloss": {
+            "en": "Nominative agent subject (senior colleague) marked by が",
+            "it": "Soggetto agente al nominativo (collega senior) marcato da が"
+          }
+        },
+        {
+          "surface": "説明して",
+          "roleCode": "VERB",
+          "ipa": "setsɯmeː ɕite",
+          "gloss": {
+            "en": "Te-form converb of 説明する (to explain)",
+            "it": "Forma in -te di 説明する (spiegare)"
+          }
+        },
+        {
+          "surface": "くれました",
+          "roleCode": "V-END",
+          "ipa": "kɯɾemaɕita",
+          "gloss": {
+            "en": "Benefactive auxiliary: someone else performs a favor toward the speaker",
+            "it": "Ausiliare benefattivo: un'altra persona compie l'azione a beneficio del parlante"
+          }
+        }
+      ],
+      "explanation": {
+        "en": "When the giver of the favor is the nominative subject (先輩が) and the benefit flows toward the speaker, use 〜てくれる (くれました).",
+        "it": "Quando chi compie il favore è il soggetto marcato da が (先輩が) e il beneficio è rivolto al parlante, si usa 〜てくれる (くれました)."
+      }
+    },
+    {
+      "id": "ja_b1_syn_01",
+      "cefr": "B1",
+      "title": {
+        "en": "Causative-passive (使役受け身) in workplace obligations",
+        "it": "Forma causativo-passiva (使役受け身) per obblighi subiti"
+      },
+      "promptSentence": "昨日の会議では、急に三十分も英語で発表 ___。",
+      "blankTarget": "させられました",
+      "distractors": ["されました", "させました", "できました"],
+      "scrambleTokens": ["昨日の会議では", "急に", "英語で", "発表", "させられました"],
+      "syntaxTokens": [
+        {
+          "surface": "昨日の会議では",
+          "roleCode": "TOPIC_PART",
+          "ipa": "kinoː no kaiɡi deɰa",
+          "gloss": {
+            "en": "Contrastive temporal/locative topic (at yesterday's meeting)",
+            "it": "Tema locativo-temporale contrastivo (nella riunione di ieri)"
+          }
+        },
+        {
+          "surface": "英語で",
+          "roleCode": "PART",
+          "ipa": "eːɡo de",
+          "gloss": {
+            "en": "Instrumental/medium particle で (in English)",
+            "it": "Particella di mezzo/strumento で (in inglese)"
+          }
+        },
+        {
+          "surface": "発表させられました",
+          "roleCode": "V-END",
+          "ipa": "happjoː saseɾaɾemaɕita",
+          "gloss": {
+            "en": "Causative-passive of する: させられる (was made to present)",
+            "it": "Causativo-passivo di する: させられる (essere stato costretto a presentare)"
+          }
+        }
+      ],
+      "explanation": {
+        "en": "The causative-passive (〜させられる) expresses that the speaker was compelled by an authority figure to perform an action involuntarily.",
+        "it": "Il causativo-passivo (〜させられる) esprime che il parlante è stato indotto o obbligato da un superiore a compiere un'azione."
+      }
+    },
+    {
+      "id": "ja_b2_syn_01",
+      "cefr": "B2",
+      "title": {
+        "en": "Formal proportional correlation 〜ば〜ほど and formal register",
+        "it": "Correlazione proporzionale 〜ば〜ほど e registro formale B2/N2"
+      },
+      "promptSentence": "この歴史的な資料は、詳しく ___ 調べるほど新たな発見がある。",
+      "blankTarget": "調べれば",
+      "distractors": ["調べたら", "調べると", "調べながら"],
+      "scrambleTokens": ["この資料は", "詳しく", "調べれば", "調べるほど", "新たな発見がある"],
+      "syntaxTokens": [
+        {
+          "surface": "この歴史的な資料は",
+          "roleCode": "TOPIC_PART",
+          "ipa": "kono ɾekiɕiteki na ɕiɾjoː ɰa",
+          "gloss": {
+            "en": "Thematic noun phrase (as for these historical documents)",
+            "it": "Sintagma nominale tematico (quanto a questi documenti storici)"
+          }
+        },
+        {
+          "surface": "調べれば調べるほど",
+          "roleCode": "CONN",
+          "ipa": "ɕiɾabeɾeba ɕiɾabeɾɯ hodo",
+          "gloss": {
+            "en": "B2/N2 proportional pattern: conditional -eba + dictionary form + ほど (the more... the more)",
+            "it": "Costrutto proporzionale B2/N2: forma ipotetica -eba + forma piana + ほど (più... più)"
+          }
+        },
+        {
+          "surface": "新たな発見がある",
+          "roleCode": "V-END",
+          "ipa": "aɾata na hakkeɴ ɡa aɾɯ",
+          "gloss": {
+            "en": "Main predicate: new discoveries emerge",
+            "it": "Predicato principale: emergono nuove scoperte"
+          }
+        }
+      ],
+      "explanation": {
+        "en": "The B2/JLPT N2 structure [Verb-ば + same Verb dictionary form + ほど] means 'the more one does X, the more Y happens'.",
+        "it": "La struttura B2/JLPT N2 [Verbo in -ば + stesso verbo in forma dizionario + ほど] traduce il correlativo 'più si fa X, più accade Y'."
+      }
+    }
+  ],
+  "writingExercises": [
+    {
+      "id": "ja_a1_wrt_01",
+      "cefr": "A1",
+      "sourcePrompt": {
+        "en": "Translate: I go to Tokyo Station by subway every morning.",
+        "it": "Traduci: Vado alla stazione di Tokyo in metropolitana ogni mattina."
+      },
+      "referenceTargets": [
+        "私は毎朝地下鉄で東京駅へ行きます。",
+        "毎朝地下鉄で東京駅に行きます。"
+      ],
+      "requiredMorphemes": ["毎朝", "地下鉄で", "東京駅", "行きます"],
+      "grammarRuleTitle": {
+        "en": "Means of transport (で) and destination particle (に / へ)",
+        "it": "Mezzo di trasporto (で) e particella di moto a luogo (に / へ)"
+      },
+      "jitFeedback": {
+        "en": "Mark the vehicle (地下鉄) with で and the destination (東京駅) with に or へ before the verb 行きます.",
+        "it": "Marca il mezzo di trasporto (地下鉄) con で e la destinazione (東京駅) con に o へ prima del verbo 行きます."
+      }
+    },
+    {
+      "id": "ja_a2_wrt_01",
+      "cefr": "A2",
+      "sourcePrompt": {
+        "en": "Translate: Because the train was delayed, I was late for the appointment.",
+        "it": "Traduci: Poiché il treno ha fatto ritardo, sono arrivato tardi all'appuntamento."
+      },
+      "referenceTargets": [
+        "電車が遅れたので、約束に間に合いませんでした。"
+      ],
+      "requiredMorphemes": ["電車が", "遅れたので", "約束に", "間に合いませんでした"],
+      "grammarRuleTitle": {
+        "en": "Objective causal conjunction ので and intransitive 遅れる",
+        "it": "Congiunzione causale oggettiva ので e verbo intransitivo 遅れる"
+      },
+      "jitFeedback": {
+        "en": "Use ので (polite/objective cause) after the plain past 遅れた when explaining a factual reason for a delay.",
+        "it": "Usa ので (causa oggettiva e cortese) dopo il passato piano 遅れた per giustificare formalmente un ritardo."
+      }
+    },
+    {
+      "id": "ja_b1_wrt_01",
+      "cefr": "B1",
+      "sourcePrompt": {
+        "en": "Translate: According to the weather forecast, it seems it will snow tomorrow night.",
+        "it": "Traduci: Secondo le previsioni meteo, pare che domani sera nevicherà."
+      },
+      "referenceTargets": [
+        "天気予報によると、明日の夜は雪が降るそうです。"
+      ],
+      "requiredMorphemes": ["天気予報によると", "明日の夜", "雪が降る", "そうです"],
+      "grammarRuleTitle": {
+        "en": "Hearsay evidentiality: 〜によると ... Plain Form + そうです",
+        "it": "Evidenzialità citativa (sentito dire): 〜によると ... Forma Piana + そうです"
+      },
+      "jitFeedback": {
+        "en": "Pair the source frame 〜によると with the clause-final hearsay marker そうです attached directly to the dictionary form (降るそうです).",
+        "it": "Abbina la fonte 〜によると al marcatore citativo そうです unito direttamente alla forma piana del verbo (降るそうです)."
+      }
+    },
+    {
+      "id": "ja_b2_wrt_01",
+      "cefr": "B2",
+      "sourcePrompt": {
+        "en": "Translate: Regardless of whether you have experience or not, we welcome motivated applicants.",
+        "it": "Traduci: A prescindere dal fatto che si abbia esperienza o meno, accogliamo candidati motivati."
+      },
+      "referenceTargets": [
+        "経験があるかないかにかかわらず、意欲のある応募者を歓迎します。",
+        "経験の有無にかかわらず、意欲のある応募者を歓迎します。"
+      ],
+      "requiredMorphemes": ["経験", "にかかわらず", "意欲のある", "歓迎します"],
+      "grammarRuleTitle": {
+        "en": "B2/N2 formal expression 〜にかかわらず (regardless of)",
+        "it": "Espressione formale B2/N2 〜にかかわらず (indipendentemente da)"
+      },
+      "jitFeedback": {
+        "en": "Attach にかかわらず to a noun of pair/polarity (経験の有無) or an affirmative-negative pair (あるかないか).",
+        "it": "Collega にかかわらず a un sostantivo bipolare (経験の有無) o a una coppia affermativo-negativa (あるかないか)."
+      }
+    }
+  ],
+  "pronunciationDrills": [
+    {
+      "id": "ja_a1_spk_01",
+      "cefr": "A1",
+      "targetSentence": "おばあさんはここで静かに本を読んでいます。",
+      "furiganaOrReading": "おばあさん (o-ba-a-sa-n, 5 morae) vs おばさん (4 morae)",
+      "fullIpa": "/obaːsaɴ ɰa koko de ɕizɯka ni hoɴ o jonde imasɯ/",
+      "translation": {
+        "en": "The grandmother is quietly reading a book here.",
+        "it": "La nonna sta leggendo tranquillamente un libro qui."
+      },
+      "criticalPhonemes": [
+        {
+          "grapheme": "ばあ",
+          "ipa": "baː",
+          "trapDescription": {
+            "en": "Long vowel mora: hold 'baa' for exactly two rhythmic beats (morae) to distinguish grandmother (おばあさん) from aunt (おばさん).",
+            "it": "Vocale lunga bimoraica: mantieni 'baa' per due battiti ritmici (more) per distinguere nonna (おばあさん) da zia (おばさん)."
+          }
+        },
+        {
+          "grapheme": "う / す",
+          "ipa": "ɯ",
+          "trapDescription": {
+            "en": "Compressed unrounded vowel [ɯ]: do not protrude the lips; in final 'ます', the /ɯ/ is often whispered/devoiced [sɯ̥].",
+            "it": "Vocale alta non arrotondata [ɯ]: non sporgere le labbra; in 'ます' finale la /ɯ/ si desonorizza [sɯ̥]."
+          }
+        }
+      ],
+      "articulatoryTip": {
+        "en": "Japanese is strictly mora-timed: give the moraic nasal ん (n) and the second half of long vowels (あ) a full rhythmic beat.",
+        "it": "Il giapponese ha isocronia moraica: assegna alla nasale moraica ん (n) e all'allungamento vocalico un intero battito ritmico."
+      }
+    },
+    {
+      "id": "ja_a2_spk_01",
+      "cefr": "A2",
+      "targetSentence": "来週の金曜日に北海道へ出張に行きます。",
+      "furiganaOrReading": "らいしゅうの きんようびに ほっかいどうへ しゅっちょうに いきます",
+      "fullIpa": "/ɾaiɕɯː no kiɰ̃joːbi ni hokkaidoː e ɕɯttɕoː ni ikimasɯ/",
+      "translation": {
+        "en": "Next Friday I am going on a business trip to Hokkaido.",
+        "it": "Venerdì prossimo andrò in viaggio di lavoro in Hokkaido."
+      },
+      "criticalPhonemes": [
+        {
+          "grapheme": "っ (促音)",
+          "ipa": "ttɕ",
+          "trapDescription": {
+            "en": "Geminate sokuon (っ) in 北海道 (hokkaidō) and 出張 (shutchō): hold the articulatory closure for one full silent mora before releasing.",
+            "it": "Sokuon geminato (っ) in 北海道 e 出張: mantieni l'occlusione silenziosa per un'intera mora prima del rilascio."
+          }
+        },
+        {
+          "grapheme": "ら / り",
+          "ipa": "ɾ",
+          "trapDescription": {
+            "en": "Postalveolar tap [ɾ]: flick the tongue tip once lightly against the ridge behind the upper teeth (neither English 'r' nor lateral 'l').",
+            "it": "Monovibrante postalveolare [ɾ]: tocca una sola volta con l'apice della lingua dietro gli alveoli."
+          }
+        }
+      ],
+      "articulatoryTip": {
+        "en": "Contrast the silent one-mora hold of small っ in 出張 (shu-t-chō, 4 morae) with the two-mora long vowel at the end.",
+        "it": "Contrasta la tenuta di una mora del piccolo っ in 出張 (shu-t-chō, 4 more) con la vocale lunga finale."
+      }
+    },
+    {
+      "id": "ja_b1_spk_01",
+      "cefr": "B1",
+      "targetSentence": "雨が降っているにもかかわらず、大勢の観客が集まった。",
+      "furiganaOrReading": "あめが ふっているにも かかわらず、おおぜいの かんきゃくが あつまった",
+      "fullIpa": "/ame ɡa ɸɯtte iɾɯ nimo kakawaɾazɯ oːzeː no kaŋkjakɯ ɡa atsɯmatta/",
+      "translation": {
+        "en": "Despite the fact that it was raining, a large crowd of spectators gathered.",
+        "it": "Nonostante stesse piovendo, si è radunata una grande folla di spettatori."
+      },
+      "criticalPhonemes": [
+        {
+          "grapheme": "雨 (あめ)",
+          "ipa": "áꜜmè",
+          "trapDescription": {
+            "en": "Atamadaka pitch accent [H-L]: start high on あ (a) and drop sharply on め (me) to mean 'rain' (vs L-H for candy).",
+            "it": "Accento musicale Atamadaka [Alto-Basso]: attacca alto su あ (a) e scendi su め (me) per significare 'pioggia'."
+          }
+        },
+        {
+          "grapheme": "ふ",
+          "ipa": "ɸɯ",
+          "trapDescription": {
+            "en": "Bilabial fricative [ɸ]: blow air gently between both lips without touching the lower lip with upper teeth.",
+            "it": "Fricativa bilabiale [ɸ]: soffia aria delicatamente tra le due labbra senza toccare il labbro inferiore coi denti."
+          }
+        }
+      ],
+      "articulatoryTip": {
+        "en": "Drop pitch immediately after the first mora of 雨 (あꜜめ) and keep a smooth Heiban (flat) contour across 観客が (かんきゃくが).",
+        "it": "Abbassa l'altezza tonale subito dopo la prima mora di 雨 (あꜜめ) e mantieni un profilo piatto (Heiban) su 観客が."
+      }
+    },
+    {
+      "id": "ja_b2_spk_01",
+      "cefr": "B2",
+      "targetSentence": "迅速かつ的確な対応が求められる状況において、冷静な判断が不可欠だ。",
+      "furiganaOrReading": "じんそく かつ てきかくな たいおうが もとめられる じょうきょうに おいて",
+      "fullIpa": "/dʑiɴsokɯ katsɯ tek̥ikakɯ na taioː ɡa motomeɾaɾeɾɯ dʑoːkjoː ni oite ɾeːseː na handaɴ ɡa ɸɯkaketsɯ da/",
+      "translation": {
+        "en": "In situations where swift and accurate action is required, calm judgment is indispensable.",
+        "it": "In situazioni in cui si richiede una risposta rapida e precisa, un giudizio lucido è indispensabile."
+      },
+      "criticalPhonemes": [
+        {
+          "grapheme": "き / く (devoiced)",
+          "ipa": "k̥i",
+          "trapDescription": {
+            "en": "High vowel devoicing (母音の無声化): between voiceless consonants in 的確 (tekikaku) and 不可欠 (fukaketsu), the /i/ and /ɯ/ become whispered.",
+            "it": "Desonorizzazione delle vocali alte (母音の無声化): tra consonanti sorde in 的確 e 不可欠, /i/ e /ɯ/ perdono sonorità."
+          }
+        },
+        {
+          "grapheme": "ん (assimilation)",
+          "ipa": "ɴ",
+          "trapDescription": {
+            "en": "Moraic ん assimilates to alveolar [n] before d/t in 判断 (handan) and to a nasalized continuant before fricatives in 迅速 (jinsoku).",
+            "it": "La nasale moraica ん si assimila al punto di articolazione della consonante seguente (alveolare in 判断, velare/continua in 迅速)."
+          }
+        }
+      ],
+      "articulatoryTip": {
+        "en": "Allow high vowels /i/ and /ɯ/ between voiceless stops/fricatives (的確 tekikaku, かつ katsu) to devoice naturally without shortening mora rhythm.",
+        "it": "Desonorizza naturalmente le vocali alte /i/ e /ɯ/ comprese tra consonanti sorde (的確 tekikaku, かつ katsu) mantenendo intatta la durata moraica."
+      }
+    }
+  ],
+  "scriptCards": [
+    {
+      "symbol": "あ",
+      "scriptCategory": "Hiragana",
+      "readingOrFurigana": "あ",
+      "romajiOrIpa": "a /ä/",
+      "meaning": {
+        "en": "Hiragana vowel 'a' (derived from 安)",
+        "it": "Vocale Hiragana 'a' (derivata da 安)"
+      },
+      "exampleWord": "あさ (朝)",
+      "exampleReading": "asa — morning",
+      "strokeCount": 3
+    },
+    {
+      "symbol": "き",
+      "scriptCategory": "Hiragana",
+      "readingOrFurigana": "き",
+      "romajiOrIpa": "ki /kʲi/",
+      "meaning": {
+        "en": "Hiragana syllable 'ki' (derived from 幾)",
+        "it": "Sillaba Hiragana 'ki' (derivata da 幾)"
+      },
+      "exampleWord": "きぼう (希望)",
+      "exampleReading": "kibō — hope",
+      "strokeCount": 4
+    },
+    {
+      "symbol": "ふ",
+      "scriptCategory": "Hiragana",
+      "readingOrFurigana": "ふ",
+      "romajiOrIpa": "fu /ɸɯ/",
+      "meaning": {
+        "en": "Hiragana bilabial 'fu' (derived from 不)",
+        "it": "Sillaba bilabiale Hiragana 'fu' (derivata da 不)"
+      },
+      "exampleWord": "ふゆ (冬)",
+      "exampleReading": "fuyu — winter",
+      "strokeCount": 4
+    },
+    {
+      "symbol": "ア",
+      "scriptCategory": "Katakana",
+      "readingOrFurigana": "ア",
+      "romajiOrIpa": "a /ä/",
+      "meaning": {
+        "en": "Katakana vowel 'a' (derived from 阿)",
+        "it": "Vocale Katakana 'a' (derivata da 阿)"
+      },
+      "exampleWord": "アプローチ",
+      "exampleReading": "apurōchi — approach",
+      "strokeCount": 2
+    },
+    {
+      "symbol": "シ",
+      "scriptCategory": "Katakana",
+      "readingOrFurigana": "シ",
+      "romajiOrIpa": "shi /ɕi/",
+      "meaning": {
+        "en": "Katakana 'shi' (horizontal strokes rising bottom-up, contrast with ツ)",
+        "it": "Katakana 'shi' (tratti allineati verticalmente, opposto a ツ)"
+      },
+      "exampleWord": "システム",
+      "exampleReading": "shisutemu — system",
+      "strokeCount": 3
+    },
+    {
+      "symbol": "ツ",
+      "scriptCategory": "Katakana",
+      "readingOrFurigana": "ツ",
+      "romajiOrIpa": "tsu /tsɯ/",
+      "meaning": {
+        "en": "Katakana 'tsu' (top-down strokes, contrast with シ)",
+        "it": "Katakana 'tsu' (tratti dall'alto in basso, opposto a シ)"
+      },
+      "exampleWord": "ツアー",
+      "exampleReading": "tsuā — tour",
+      "strokeCount": 3
+    },
+    {
+      "symbol": "語",
+      "scriptCategory": "Kanji N5-N2",
+      "readingOrFurigana": "ご / かた(る)",
+      "romajiOrIpa": "GO / kata-ru",
+      "meaning": {
+        "en": "Language, word, to recount (JLPT N5)",
+        "it": "Lingua, parola, narrare (JLPT N5)"
+      },
+      "exampleWord": "言語学",
+      "exampleReading": "げんごがく (gengogaku — linguistics)",
+      "strokeCount": 14
+    },
+    {
+      "symbol": "験",
+      "scriptCategory": "Kanji N5-N2",
+      "readingOrFurigana": "けん / げん",
+      "romajiOrIpa": "KEN / GEN",
+      "meaning": {
+        "en": "Verification, test, experience (JLPT N4)",
+        "it": "Verifica, esame, esperienza (JLPT N4)"
+      },
+      "exampleWord": "経験",
+      "exampleReading": "けいけん (keiken — experience)",
+      "strokeCount": 18
+    },
+    {
+      "symbol": "況",
+      "scriptCategory": "Kanji N5-N2",
+      "readingOrFurigana": "きょう",
+      "romajiOrIpa": "KYŌ",
+      "meaning": {
+        "en": "Condition, circumstance, state of affairs (JLPT N3/N2)",
+        "it": "Condizione, circostanza, stato di cose (JLPT N3/N2)"
+      },
+      "exampleWord": "状況",
+      "exampleReading": "じょうきょう (jōkyō — situation)",
+      "strokeCount": 8
+    },
+    {
+      "symbol": "徴",
+      "scriptCategory": "Kanji N5-N2",
+      "readingOrFurigana": "ちょう",
+      "romajiOrIpa": "CHŌ",
+      "meaning": {
+        "en": "Indication, symptom, distinctive feature (JLPT N2)",
+        "it": "Indizio, caratteristica distintiva, segno (JLPT N2)"
+      },
+      "exampleWord": "特徴",
+      "exampleReading": "とくちょう (tokuchō — characteristic)",
+      "strokeCount": 14
+    }
+  ]
+}
