@@ -33,8 +33,6 @@ import com.vocalfox.app.domain.model.LanguagePack
 import com.vocalfox.app.domain.model.VoicePreset
 import com.vocalfox.app.ui.i18n.SystemLang
 import com.vocalfox.app.ui.i18n.UiStrings
-import com.vocalfox.app.ui.theme.MascotPedagogicalBanner
-import com.vocalfox.app.ui.theme.MascotState
 import com.vocalfox.app.ui.theme.VocalFoxTheme
 import com.vocalfox.app.ui.theme.VocalFoxTokens
 import com.vocalfox.app.ui.theme.VocalFoxType
@@ -58,27 +56,22 @@ fun SettingsVoiceScreen(
             .fillMaxSize()
             .background(colors.background)
             .verticalScroll(rememberScrollState())
-            .padding(horizontal = 20.dp, vertical = 12.dp),
-        verticalArrangement = Arrangement.spacedBy(20.dp)
+            .padding(horizontal = 20.dp, vertical = 8.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        Text(
-            text = strings.settingsHeader,
-            style = VocalFoxType.PageTitle,
-            color = colors.primaryText
-        )
-
+        // System UI Language Switcher
         Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(VocalFoxTokens.RadiusCard))
                 .background(colors.card)
                 .border(1.dp, colors.hairline, RoundedCornerShape(VocalFoxTokens.RadiusCard))
-                .padding(20.dp),
+                .padding(18.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             Text(
                 text = strings.systemLanguageSection,
-                style = VocalFoxType.BodyMedium,
+                style = VocalFoxType.SectionTitle,
                 color = colors.primaryText
             )
 
@@ -88,45 +81,40 @@ fun SettingsVoiceScreen(
             ) {
                 SystemLang.entries.forEach { lang ->
                     val isSelected = lang == systemLang
-                    Row(
+                    Box(
                         modifier = Modifier
                             .weight(1f)
-                            .clip(RoundedCornerShape(VocalFoxTokens.RadiusControl))
+                            .clip(RoundedCornerShape(12.dp))
                             .background(if (isSelected) colors.accent else colors.raised)
                             .clickable { onSelectSystemLang(lang) }
-                            .padding(horizontal = 16.dp, vertical = 12.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
+                            .padding(vertical = 12.dp),
+                        contentAlignment = Alignment.Center
                     ) {
                         Text(
                             text = lang.displayName,
                             style = VocalFoxType.BodyMedium,
                             color = if (isSelected) colors.onAccent else colors.primaryText
                         )
-                        Text(
-                            text = lang.code.uppercase(),
-                            style = VocalFoxType.MetaMono,
-                            color = if (isSelected) colors.onAccent else colors.mutedText
-                        )
                     }
                 }
             }
         }
 
+        // Dark Mode Toggle
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(VocalFoxTokens.RadiusCard))
                 .background(colors.card)
                 .border(1.dp, colors.hairline, RoundedCornerShape(VocalFoxTokens.RadiusCard))
-                .padding(horizontal = 20.dp, vertical = 16.dp),
+                .padding(horizontal = 18.dp, vertical = 14.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 Text(
                     text = strings.appearanceSection,
-                    style = VocalFoxType.BodyMedium,
+                    style = VocalFoxType.SectionTitle,
                     color = colors.primaryText
                 )
                 Text(
@@ -145,24 +133,20 @@ fun SettingsVoiceScreen(
             )
         }
 
+        // Clean Teacher Voice Picker (No technical .onnx file paths shown)
         Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(VocalFoxTokens.RadiusCard))
                 .background(colors.card)
                 .border(1.dp, colors.hairline, RoundedCornerShape(VocalFoxTokens.RadiusCard))
-                .padding(20.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+                .padding(18.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
             Text(
                 text = strings.voiceModelsSection,
-                style = VocalFoxType.BodyMedium,
+                style = VocalFoxType.SectionTitle,
                 color = colors.primaryText
-            )
-            Text(
-                text = strings.offlineStorageNote,
-                style = VocalFoxType.SecondaryCaption,
-                color = colors.secondaryText
             )
 
             allPacks.values.forEach { pack ->
@@ -176,9 +160,9 @@ fun SettingsVoiceScreen(
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     Text(
-                        text = "${pack.languageName.get(systemLang)} (${pack.languageCode.uppercase()})",
+                        text = pack.languageName.get(systemLang),
                         style = VocalFoxType.BodyMedium,
-                        color = colors.primaryText
+                        color = colors.accent
                     )
 
                     pack.availableVoices.forEach { preset ->
@@ -186,58 +170,48 @@ fun SettingsVoiceScreen(
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .clip(RoundedCornerShape(VocalFoxTokens.RadiusControl))
+                                .clip(RoundedCornerShape(12.dp))
                                 .background(if (isSelected) colors.raised else colors.background)
                                 .border(
-                                    width = 1.dp,
+                                    width = if (isSelected) 1.5.dp else 1.dp,
                                     color = if (isSelected) colors.accent else colors.hairline,
-                                    shape = RoundedCornerShape(VocalFoxTokens.RadiusControl)
+                                    shape = RoundedCornerShape(12.dp)
                                 )
                                 .clickable { onSelectVoicePreset(pack.languageCode, preset) }
-                                .padding(12.dp),
+                                .padding(14.dp),
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                                Row(
-                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Text(
-                                        text = preset.displayName,
-                                        style = VocalFoxType.BodyMedium,
-                                        color = colors.primaryText
-                                    )
-                                    Text(
-                                        text = "${preset.gender} · ${preset.timbre}",
-                                        style = VocalFoxType.MetaMono,
-                                        color = colors.mutedText
-                                    )
-                                }
                                 Text(
-                                    text = preset.onnxFileName,
-                                    style = VocalFoxType.MetaMono,
+                                    text = preset.displayName,
+                                    style = VocalFoxType.BodyMedium,
+                                    color = colors.primaryText
+                                )
+                                Text(
+                                    text = "${preset.gender} · ${preset.timbre}",
+                                    style = VocalFoxType.SecondaryCaption,
                                     color = colors.secondaryText
                                 )
                             }
 
                             Row(
-                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                horizontalArrangement = Arrangement.spacedBy(10.dp),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Box(
                                     modifier = Modifier
-                                        .clip(RoundedCornerShape(VocalFoxTokens.RadiusKeycap))
+                                        .clip(RoundedCornerShape(8.dp))
                                         .background(colors.card)
-                                        .border(1.dp, colors.hairline, RoundedCornerShape(VocalFoxTokens.RadiusKeycap))
+                                        .border(1.dp, colors.hairline, RoundedCornerShape(8.dp))
                                         .clickable { onPreviewVoice(pack.languageCode, preset) }
-                                        .padding(horizontal = 8.dp, vertical = 6.dp)
+                                        .padding(8.dp)
                                 ) {
                                     Icon(
                                         imageVector = Icons.Outlined.VolumeUp,
                                         contentDescription = strings.previewVoiceAction,
                                         tint = colors.primaryText,
-                                        modifier = Modifier.size(16.dp)
+                                        modifier = Modifier.size(18.dp)
                                     )
                                 }
                                 if (isSelected) {
@@ -245,7 +219,7 @@ fun SettingsVoiceScreen(
                                         imageVector = Icons.Outlined.Check,
                                         contentDescription = null,
                                         tint = colors.accent,
-                                        modifier = Modifier.size(18.dp)
+                                        modifier = Modifier.size(20.dp)
                                     )
                                 }
                             }
@@ -255,13 +229,6 @@ fun SettingsVoiceScreen(
             }
         }
 
-        MascotPedagogicalBanner(
-            state = MascotState.SLEEPING,
-            title = "100% Air-Gapped Runtime",
-            subtitle = strings.offlineStorageNote,
-            metaBadge = "ONNX"
-        )
-
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(100.dp))
     }
 }

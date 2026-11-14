@@ -8,478 +8,420 @@
     {
       "voiceId": "de_DE-thorsten-high",
       "displayName": "Thorsten (Hochdeutsch)",
-      "gender": "Male",
-      "timbre": "Warm studio baritone",
+      "gender": "Maschile",
+      "timbre": "Calda e chiara",
       "onnxFileName": "de_DE-thorsten-high.onnx",
       "sampleRateHz": 22050
     },
     {
       "voiceId": "de_DE-kerstin-medium",
-      "displayName": "Kerstin (Hannover Clear)",
-      "gender": "Female",
-      "timbre": "Crisp soprano",
+      "displayName": "Kerstin (Hannover)",
+      "gender": "Femminile",
+      "timbre": "Nitida e scandita",
       "onnxFileName": "de_DE-kerstin-medium.onnx",
       "sampleRateHz": 22050
     }
   ],
   "grammarExercises": [
     {
-      "id": "de_a1_syn_01",
+      "id": "de_a1_u1",
       "cefr": "A1",
       "title": {
-        "en": "Main clause V2 inversion and accusative case",
-        "it": "Regola del verbo in seconda posizione (V2) e caso accusativo"
+        "en": "Unit 1 · Greetings & ordering in Berlin",
+        "it": "Unità 1 · Salutare e ordinare a Berlino"
       },
-      "promptSentence": "Heute ___ der Architekt einen neuen Entwurf.",
-      "blankTarget": "zeichnet",
-      "distractors": ["zeichnen", "gezeichnet", "zeichnest"],
-      "scrambleTokens": ["Heute", "zeichnet", "der", "Architekt", "einen", "Entwurf"],
+      "promptSentence": "Guten Tag, ich ___ gern einen Kaffee und ein Wasser.",
+      "blankTarget": "möchte",
+      "distractors": ["möchten", "bin", "hast"],
+      "scrambleTokens": ["Ich", "möchte", "gern", "einen", "Kaffee"],
       "syntaxTokens": [
         {
-          "surface": "Heute",
-          "roleCode": "CONN",
-          "ipa": "ˈhɔʏtə",
+          "surface": "Guten Tag",
+          "roleCode": "A1",
+          "ipa": "ˈɡuːtn̩ taːk",
           "gloss": {
-            "en": "Vorfeld (Position 1): Temporal adverb",
-            "it": "Vorfeld (Posizione 1): Avverbio temporale"
+            "en": "Good day / Hello",
+            "it": "Buongiorno"
           }
         },
         {
-          "surface": "zeichnet",
+          "surface": "ich möchte gern",
           "roleCode": "V2",
-          "ipa": "ˈtsaɪçnət",
+          "ipa": "ɪç ˈmœçtə ɡɛʁn",
           "gloss": {
-            "en": "Linke Satzklammer (V2): Finite verb must stand in slot 2",
-            "it": "Linke Satzklammer (V2): Il verbo finito deve occupare la 2ª posizione"
+            "en": "I would gladly like",
+            "it": "vorrei volentieri (cortese)"
           }
         },
         {
-          "surface": "der Architekt",
-          "roleCode": "SUBJ",
-          "ipa": "deːɐ̯ aʁçiˈtɛkt",
-          "gloss": {
-            "en": "Inverted nominative subject immediately following V2",
-            "it": "Soggetto nominativo invertito subito dopo il verbo V2"
-          }
-        },
-        {
-          "surface": "einen neuen Entwurf",
+          "surface": "einen Kaffee",
           "roleCode": "OBJ",
-          "ipa": "ˈaɪnən ˈnɔʏən ɛntˈvʊʁf",
+          "ipa": "ˈaɪnən ˈkafe",
           "gloss": {
-            "en": "Masculine accusative direct object (-en inflection)",
-            "it": "Complemento oggetto maschile accusativo (desinenza -en)"
+            "en": "a coffee (accusative)",
+            "it": "un caffè (oggetto diretto)"
           }
         }
       ],
       "explanation": {
-        "en": "In German declarative main clauses, the finite verb (zeichnet) strictly occupies second position (V2). When an adverb like 'Heute' occupies Position 1, the subject moves behind the verb.",
-        "it": "Nelle proposizioni principali dichiarative tedesche, il verbo finito (zeichnet) occupa rigorosamente la seconda posizione (V2). Se 'Heute' è in 1ª posizione, il soggetto slitta dopo il verbo."
+        "en": "'Ich möchte gern...' is the most natural, polite way to order anything in German.",
+        "it": "'Ich möchte gern...' (vorrei volentieri) è la formula più naturale ed educata per ordinare in tedesco."
       }
     },
     {
-      "id": "de_a2_syn_01",
+      "id": "de_a1_u2",
+      "cefr": "A1",
+      "title": {
+        "en": "Unit 2 · Time words at the start of a sentence",
+        "it": "Unità 2 · Quando inizi la frase con 'Oggi' o 'Domani'"
+      },
+      "promptSentence": "Morgen ___ ich mit dem Zug nach München.",
+      "blankTarget": "fahre",
+      "distractors": ["fahren", "fährst", "gefahren"],
+      "scrambleTokens": ["Morgen", "fahre", "ich", "nach", "München"],
+      "syntaxTokens": [
+        {
+          "surface": "Morgen",
+          "roleCode": "CONN",
+          "ipa": "ˈmɔʁɡn̩",
+          "gloss": {
+            "en": "Tomorrow",
+            "it": "Domani"
+          }
+        },
+        {
+          "surface": "fahre ich",
+          "roleCode": "V2",
+          "ipa": "ˈfaːʁə ɪç",
+          "gloss": {
+            "en": "I travel (verb before 'ich')",
+            "it": "vado io (il verbo resta sempre al 2° posto)"
+          }
+        },
+        {
+          "surface": "mit dem Zug",
+          "roleCode": "OBJ",
+          "ipa": "mɪt deːm tsuːk",
+          "gloss": {
+            "en": "by train",
+            "it": "con il treno"
+          }
+        }
+      ],
+      "explanation": {
+        "en": "In German, the action verb is always the second block: if you start with 'Morgen', say 'Morgen fahre ich' (not 'Morgen ich fahre').",
+        "it": "In tedesco il verbo sta sempre al 2° posto: se inizi con 'Morgen' (Domani), dici 'Morgen fahre ich'."
+      }
+    },
+    {
+      "id": "de_a2_u1",
       "cefr": "A2",
       "title": {
-        "en": "Subordinate clause verb-final (Nebensatz V-End) with weil",
-        "it": "Verbo in fondo alla frase subordinata (Nebensatz) con weil"
+        "en": "Unit 1 · Explaining why with 'weil' (because)",
+        "it": "Unità 1 · Spiegare il perché con 'weil' (perché)"
       },
       "promptSentence": "Ich bleibe heute zu Hause, weil es draußen stark ___.",
-      "blankTarget": "stürmt",
-      "distractors": ["stürmen", "gestürmt", "stürmst"],
-      "scrambleTokens": ["weil", "es", "draußen", "stark", "stürmt"],
+      "blankTarget": "regnet",
+      "distractors": ["regnen", "geregnet", "regnest"],
+      "scrambleTokens": ["weil", "es", "draußen", "stark", "regnet"],
       "syntaxTokens": [
         {
-          "surface": "Ich bleibe",
+          "surface": "Ich bleibe zu Hause",
           "roleCode": "V2",
-          "ipa": "ɪç ˈblaɪbə",
+          "ipa": "ɪç ˈblaɪbə tsu ˈhaʊzə",
           "gloss": {
-            "en": "Main clause subject + V2 verb",
-            "it": "Proposizione principale: soggetto + verbo V2"
+            "en": "I stay at home",
+            "it": "Resto a casa"
           }
         },
         {
-          "surface": "weil",
+          "surface": "weil es draußen",
           "roleCode": "CONN",
-          "ipa": "vaɪl",
+          "ipa": "vaɪl ɛs ˈdʁaʊsn̩",
           "gloss": {
-            "en": "Subordinating causal conjunction triggering verb-end",
-            "it": "Congiunzione subordinante causale che spinge il verbo in fondo"
+            "en": "because outside it...",
+            "it": "perché fuori..."
           }
         },
         {
-          "surface": "stürmt",
+          "surface": "stark regnet",
           "roleCode": "V-END",
-          "ipa": "ʃtʏʁmt",
+          "ipa": "ʃtaʁk ˈʁeːɡnət",
           "gloss": {
-            "en": "Rechte Satzklammer: Conjugated verb at the end of the Nebensatz",
-            "it": "Rechte Satzklammer: Verbo coniugato in chiusura di subordinata"
+            "en": "rains heavily (verb at the end)",
+            "it": "piove forte (dopo 'weil' il verbo va in fondo)"
           }
         }
       ],
       "explanation": {
-        "en": "Subordinating conjunctions such as 'weil', 'dass', and 'obwohl' send the conjugated verb (stürmt) to the very end of the clause.",
-        "it": "Le congiunzioni subordinanti come 'weil', 'dass' e 'obwohl' spostano il verbo coniugato (stürmt) in ultima posizione."
+        "en": "After 'weil' (because) or 'dass' (that), push the conjugated verb to the very end of the sentence.",
+        "it": "Dopo 'weil' (perché) o 'dass' (che), il verbo coniugato scivola sempre in fondo alla frase."
       }
     },
     {
-      "id": "de_b1_syn_01",
+      "id": "de_b1_u1",
       "cefr": "B1",
       "title": {
-        "en": "Genitive prepositions and relative clauses",
-        "it": "Preposizioni con il caso genitivo e frasi relative"
+        "en": "Unit 1 · Expressing contrast with 'obwohl' & 'trotz'",
+        "it": "Unità 1 · Esprimere contrasto con 'trotz' (nonostante)"
       },
-      "promptSentence": "Trotz ___ dichten Nebels landete das Flugzeug pünktlich.",
+      "promptSentence": "Trotz ___ starken Regens sind wir pünktlich angekommen.",
       "blankTarget": "des",
       "distractors": ["dem", "den", "der"],
-      "scrambleTokens": ["Trotz", "des", "dichten", "Nebels", "landete", "das", "Flugzeug"],
+      "scrambleTokens": ["Trotz", "des", "starken", "Regens", "sind", "wir", "angekommen"],
       "syntaxTokens": [
         {
-          "surface": "Trotz des dichten Nebels",
+          "surface": "Trotz des starken Regens",
           "roleCode": "CONN",
-          "ipa": "tʁɔts dɛs ˈdɪçtən ˈneːbl̩s",
+          "ipa": "tʁɔts dɛs ˈʃtaʁkn̩ ˈʁeːɡn̩s",
           "gloss": {
-            "en": "Genitive prepositional phrase occupying Position 1 (des + -s noun suffix)",
-            "it": "Sintagma preposizionale al genitivo in Posizione 1 (des + desinenza -s)"
+            "en": "Despite the heavy rain",
+            "it": "Nonostante la forte pioggia"
           }
         },
         {
-          "surface": "landete",
+          "surface": "sind wir angekommen",
           "roleCode": "V2",
-          "ipa": "ˈlandətə",
+          "ipa": "zɪnt viːɐ̯ ˈanɡəkɔmən",
           "gloss": {
-            "en": "Präteritum finite verb in V2 position",
-            "it": "Verbo finito al Präteritum in seconda posizione (V2)"
-          }
-        },
-        {
-          "surface": "das Flugzeug",
-          "roleCode": "SUBJ",
-          "ipa": "das ˈfluːktsɔʏk",
-          "gloss": {
-            "en": "Neuter nominative subject",
-            "it": "Soggetto neutro al caso nominativo"
+            "en": "we arrived",
+            "it": "siamo arrivati"
           }
         }
       ],
       "explanation": {
-        "en": "Prepositions like 'trotz', 'während', and 'wegen' govern the genitive case: masculine/neuter nouns take 'des' + '-s/-es' on the noun (des Nebels).",
-        "it": "Le preposizioni 'trotz', 'während' e 'wegen' reggono il genitivo: i sostantivi maschili e neutri prendono 'des' + '-s/-es' sul nome (des Nebels)."
+        "en": "'Trotz' (despite) takes 'des' for masculine and neuter words: 'Trotz des Regens' (despite the rain).",
+        "it": "Dopo 'Trotz' (nonostante) si usa 'des' con i nomi maschili e neutri: 'Trotz des Regens'."
       }
     },
     {
-      "id": "de_b2_syn_01",
+      "id": "de_b2_u1",
       "cefr": "B2",
       "title": {
-        "en": "Konjunktiv II past passive with modal verbs in subordinate clauses",
-        "it": "Konjunktiv II passato in subordinata con doppio infinito / passivo"
+        "en": "Unit 1 · Proportional 'The more..., the more...' (Je... desto)",
+        "it": "Unità 1 · Costruzione 'Più..., più...' (Je... desto)"
       },
-      "promptSentence": "Der Bericht zeigt, dass die Frist problemlos ___ eingehalten werden können.",
-      "blankTarget": "hätte",
-      "distractors": ["hatte", "würde", "wäre"],
-      "scrambleTokens": ["dass", "die", "Frist", "hätte", "eingehalten", "werden", "können"],
+      "promptSentence": "Je mehr wir auf Deutsch sprechen, ___ einfacher wird es.",
+      "blankTarget": "desto",
+      "distractors": ["weil", "obwohl", "damit"],
+      "scrambleTokens": ["Je", "mehr", "wir", "sprechen", "desto", "einfacher", "wird", "es"],
       "syntaxTokens": [
         {
-          "surface": "dass die Frist",
-          "roleCode": "SUBJ",
-          "ipa": "das diː fʁɪst",
-          "gloss": {
-            "en": "Subordinate conjunction + passive subject",
-            "it": "Congiunzione subordinante + soggetto passivo"
-          }
-        },
-        {
-          "surface": "hätte",
-          "roleCode": "V2",
-          "ipa": "ˈhɛtə",
-          "gloss": {
-            "en": "Konjunktiv II auxiliary placed BEFORE the three-verb cluster (Oberfeld)",
-            "it": "Ausiliare al Konjunktiv II anticipato PRIMA del gruppo di infiniti (Oberfeld)"
-          }
-        },
-        {
-          "surface": "eingehalten werden können",
+          "surface": "Je mehr wir sprechen",
           "roleCode": "V-END",
-          "ipa": "ˈaɪnɡəhaltn̩ ˈveːɐ̯dn̩ ˈkœnən",
+          "ipa": "jeː meːɐ̯ viːɐ̯ ˈʃpʁɛçn̩",
           "gloss": {
-            "en": "Participle + passive auxiliary + modal Ersatzinfinitiv at the right bracket",
-            "it": "Participio + ausiliare passivo + Ersatzinfinitiv modale in chiusura"
+            "en": "The more we speak",
+            "it": "Più parliamo (verbo alla fine nella prima parte)"
+          }
+        },
+        {
+          "surface": "desto einfacher wird es",
+          "roleCode": "V2",
+          "ipa": "ˈdɛsto ˈaɪnfaxɐ vɪʁt ɛs",
+          "gloss": {
+            "en": "the easier it becomes",
+            "it": "più facile diventa"
           }
         }
       ],
       "explanation": {
-        "en": "In B2 German, when a subordinate clause contains a double infinitive / modal passive cluster (eingehalten werden können), the finite auxiliary (hätte) jumps ahead of the non-finite verb cluster (Oberfeldumstellung).",
-        "it": "Al livello B2, quando una subordinata contiene un gruppo con Ersatzinfinitiv modale (eingehalten werden können), l'ausiliare finito (hätte) precede l'intero blocco verbale."
+        "en": "Pair 'Je + comparative ... (verb at end)' with 'desto + comparative + verb'.",
+        "it": "Usa la coppia 'Je ... (verbo in fondo), desto + comparativo + verbo'."
       }
     }
   ],
   "writingExercises": [
     {
-      "id": "de_a1_wrt_01",
+      "id": "de_a1_w1",
       "cefr": "A1",
       "sourcePrompt": {
-        "en": "Translate: Tomorrow I am traveling by train to Munich.",
-        "it": "Traduci: Domani viaggio in treno verso Monaco."
+        "en": "Tomorrow I am traveling by train to Munich.",
+        "it": "Domani vado in treno a Monaco."
       },
-      "referenceTargets": [
-        "Morgen fahre ich mit dem Zug nach München."
-      ],
-      "requiredMorphemes": ["morgen", "fahre ich", "mit dem zug", "nach münchen"],
+      "referenceTargets": ["Morgen fahre ich mit dem Zug nach München"],
+      "requiredMorphemes": ["morgen", "fahre", "zug", "münchen"],
       "grammarRuleTitle": {
-        "en": "V2 inversion after 'Morgen' and dative 'mit dem Zug'",
-        "it": "Inversione V2 dopo 'Morgen' e dativo 'mit dem Zug'"
+        "en": "Starting with a time word (Morgen fahre ich...)",
+        "it": "Iniziare con una parola di tempo (Morgen fahre ich...)"
       },
       "jitFeedback": {
-        "en": "Start with 'Morgen', place the finite verb 'fahre' second, invert 'ich' immediately after it, and use dative 'mit dem Zug'.",
-        "it": "Inizia con 'Morgen', poni il verbo 'fahre' in 2ª posizione seguìto da 'ich', e usa il dativo 'mit dem Zug'."
+        "en": "Keep 'fahre' right after 'Morgen'.",
+        "it": "Metti 'fahre' subito dopo 'Morgen'."
       }
     },
     {
-      "id": "de_a2_wrt_01",
+      "id": "de_a2_w1",
       "cefr": "A2",
       "sourcePrompt": {
-        "en": "Translate: Could you tell me when the museum opens?",
-        "it": "Traduci: Potrebbe dirmi quando apre il museo?"
+        "en": "Could you tell me when the museum opens?",
+        "it": "Potrebbe dirmi quando apre il museo?"
       },
-      "referenceTargets": [
-        "Könnten Sie mir bitte sagen, wann das Museum öffnet?"
-      ],
-      "requiredMorphemes": ["könnten sie", "mir", "wann", "öffnet"],
+      "referenceTargets": ["Könnten Sie mir bitte sagen wann das Museum öffnet"],
+      "requiredMorphemes": ["könnten", "wann", "museum", "öffnet"],
       "grammarRuleTitle": {
-        "en": "Indirect question word order (wann ... öffnet) and polite Konjunktiv II",
-        "it": "Ordine delle interrogative indirette (wann ... öffnet) e Konjunktiv II di cortesia"
+        "en": "Polite questions (wann ... öffnet)",
+        "it": "Domande cortesi indirette (wann ... öffnet)"
       },
       "jitFeedback": {
-        "en": "Indirect questions introduced by 'wann' are subordinate clauses, so the conjugated verb 'öffnet' moves to the end.",
-        "it": "Le interrogative indirette introdotte da 'wann' sono subordinate: il verbo coniugato 'öffnet' va in fondo."
+        "en": "After 'wann', put 'öffnet' (opens) at the end of the sentence.",
+        "it": "Dopo 'wann' (quando), metti il verbo 'öffnet' (apre) alla fine."
       }
     },
     {
-      "id": "de_b1_wrt_01",
+      "id": "de_b1_w1",
       "cefr": "B1",
       "sourcePrompt": {
-        "en": "Translate: Although the contract was signed yesterday, some details are still missing.",
-        "it": "Traduci: Sebbene il contratto sia stato firmato ieri, mancano ancora alcuni dettagli."
+        "en": "Although the contract was signed yesterday, some details are missing.",
+        "it": "Sebbene il contratto sia stato firmato ieri, mancano alcuni dettagli."
       },
-      "referenceTargets": [
-        "Obwohl der Vertrag gestern unterschrieben wurde, fehlen noch einige Details."
-      ],
-      "requiredMorphemes": ["obwohl", "unterschrieben wurde", "fehlen", "details"],
+      "referenceTargets": ["Obwohl der Vertrag gestern unterschrieben wurde fehlen einige Details"],
+      "requiredMorphemes": ["obwohl", "wurde", "fehlen", "details"],
       "grammarRuleTitle": {
-        "en": "Nebensatz-Hauptsatz verb-verb adjacency (... wurde, fehlen ...)",
-        "it": "Adiacenza verbo-verbo tra subordinata anteposta e principale (... wurde, fehlen ...)"
+        "en": "Connecting clauses with 'Obwohl' (Although)",
+        "it": "Collegare due frasi con 'Obwohl' (Sebbene)"
       },
       "jitFeedback": {
-        "en": "When a subordinate clause ('Obwohl ... unterschrieben wurde') occupies Position 1 of the sentence, the main clause begins immediately with its finite verb ('fehlen').",
-        "it": "Quando la subordinata ('Obwohl ... unterschrieben wurde') occupa l'intera prima posizione, la principale inizia immediatamente col proprio verbo finito ('fehlen')."
+        "en": "End the first clause with 'wurde' and start the second immediately with 'fehlen'.",
+        "it": "Chiudi la prima parte con 'wurde' e inizia subito la seconda con 'fehlen'."
       }
     },
     {
-      "id": "de_b2_wrt_01",
+      "id": "de_b2_w1",
       "cefr": "B2",
       "sourcePrompt": {
-        "en": "Translate: The more carefully we analyze the data, the more reliable the forecast becomes.",
-        "it": "Traduci: Più attentamente analizziamo i dati, più affidabile diventa la previsione."
+        "en": "The more carefully we analyze the data, the more reliable the forecast becomes.",
+        "it": "Più attentamente analizziamo i dati, più affidabile diventa la previsione."
       },
-      "referenceTargets": [
-        "Je sorgfältiger wir die Daten analysieren, desto zuverlässiger wird die Prognose."
-      ],
-      "requiredMorphemes": ["je sorgfältiger", "analysieren", "desto zuverlässiger", "wird"],
+      "referenceTargets": ["Je sorgfältiger wir die Daten analysieren desto zuverlässiger wird die Prognose"],
+      "requiredMorphemes": ["je", "analysieren", "desto", "wird"],
       "grammarRuleTitle": {
-        "en": "Proportional correlative construction (Je + Nebensatz V-End, desto + Komparativ + V2)",
-        "it": "Costrutto correlativo proporzionale (Je + subordinata V-End, desto + comparativo + V2)"
+        "en": "Je ... desto proportional structure",
+        "it": "Costruzione proporzionale Je ... desto"
       },
       "jitFeedback": {
-        "en": "'Je' introduces a subordinate clause with the verb at the end (analysieren), while 'desto + comparative' occupies Position 1 of the main clause, forcing V2 inversion (wird die Prognose).",
-        "it": "'Je' introduce una subordinata col verbo alla fine (analysieren), mentre 'desto + comparativo' richiede subito il verbo finito in 2ª posizione (wird die Prognose)."
+        "en": "Use 'Je ... analysieren' followed by 'desto zuverlässiger wird ...'.",
+        "it": "Usa 'Je ... analysieren' seguito da 'desto zuverlässiger wird ...'."
       }
     }
   ],
   "pronunciationDrills": [
     {
-      "id": "de_a1_spk_01",
+      "id": "de_a1_s1",
       "cefr": "A1",
-      "targetSentence": "Ich möchte fünf grüne Bücher für die Prüfung.",
-      "furiganaOrReading": "Front rounded umlauts /œ/, /ʏ/, /yː/ & Ich-Laut /ç/",
-      "fullIpa": "/ɪç ˈmœçtə fʏnf ˈɡʁyːnə ˈbyːçɐ fyːɐ̯ diː ˈpʁyːfʊŋ/",
+      "targetSentence": "Guten Tag, ich möchte gern fünf grüne Bücher.",
+      "furiganaOrReading": "Suono dolce di 'ch' in ich/möchte e vocali con Umlaut (ö, ü)",
+      "fullIpa": "/ˈɡuːtn̩ taːk ɪç ˈmœçtə ɡɛʁn fʏnf ˈɡʁyːnə ˈbyːçɐ/",
       "translation": {
-        "en": "I would like five green books for the exam.",
-        "it": "Vorrei cinque libri verdi per l'esame."
+        "en": "Good day, I would like five green books.",
+        "it": "Buongiorno, vorrei volentieri cinque libri verdi."
       },
-      "criticalPhonemes": [
-        {
-          "grapheme": "ch",
-          "ipa": "ç",
-          "trapDescription": {
-            "en": "Ich-Laut [ç]: voiceless palatal fricative after front vowels (i, ö, ü). Keep the tongue blade high against the hard palate, never [ʃ] or [k].",
-            "it": "Ich-Laut [ç]: fricativa palatale sorda dopo vocali anteriori (i, ö, ü). Solleva il dorso anteriore della lingua verso il palato duro, mai [ʃ] o [k]."
-          }
-        },
-        {
-          "grapheme": "ü",
-          "ipa": "yː",
-          "trapDescription": {
-            "en": "Hold the tongue in the high front position of [iː] while rounding the lips firmly as for [uː].",
-            "it": "Mantieni la lingua nella posizione anteriore alta di [iː] arrotondando nettamente le labbra come per [uː]."
-          }
-        }
-      ],
+      "criticalPhonemes": [],
       "articulatoryTip": {
-        "en": "Keep your tongue tip anchored behind your lower front teeth while transitioning between 'möchte' [œç] and 'Bücher' [yːç].",
-        "it": "Mantieni la punta della lingua ancorata dietro gli incisivi inferiori passando da 'möchte' [œç] a 'Bücher' [yːç]."
+        "en": "For 'ü' in 'fünf', 'grüne', and 'Bücher', say 'i' while rounding your lips as if whistling.",
+        "it": "Per pronunciare la 'ü' di 'fünf' e 'Bücher', pronuncia una 'i' tenendo però le labbra arrotondate come per dire 'u'."
       }
     },
     {
-      "id": "de_a2_spk_01",
+      "id": "de_a2_s1",
       "cefr": "A2",
-      "targetSentence": "Nach acht Uhr kocht der Koch auch noch eine Suppe.",
-      "furiganaOrReading": "Velar/uvular Ach-Laut /x/ ~ /χ/ after back vowels",
-      "fullIpa": "/naːx axt uːɐ̯ kɔxt deːɐ̯ kɔx aʊx nɔx ˈaɪnə ˈzʊpə/",
+      "targetSentence": "Morgen fahre ich mit dem Zug nach München.",
+      "furiganaOrReading": "Differenza tra 'ch' dura (nach) e 'ch' dolce (München)",
+      "fullIpa": "/ˈmɔʁɡn̩ ˈfaːʁə ɪç mɪt deːm tsuːk naːx ˈmʏnçn̩/",
       "translation": {
-        "en": "After eight o'clock the cook also makes a soup.",
-        "it": "Dopo le otto il cuoco cucina ancora anche una zuppa."
+        "en": "Tomorrow I am traveling by train to Munich.",
+        "it": "Domani vado in treno a Monaco."
       },
-      "criticalPhonemes": [
-        {
-          "grapheme": "ch (a/o/u)",
-          "ipa": "x",
-          "trapDescription": {
-            "en": "Ach-Laut [x]: voiceless velar/uvular fricative after back vowels (a, o, u, au).",
-            "it": "Ach-Laut [x]: fricativa velare/uvulare sorda dopo vocali posteriori (a, o, u, au)."
-          }
-        },
-        {
-          "grapheme": "-er / -r",
-          "ipa": "ɐ",
-          "trapDescription": {
-            "en": "Post-vocalic 'r' in 'Uhr' and 'der' vocalizes into a near-open central vowel [ɐ].",
-            "it": "La 'r' postvocalica in 'Uhr' e 'der' si vocalizza in una vocale centrale quasi aperta [ɐ]."
-          }
-        }
-      ],
+      "criticalPhonemes": [],
       "articulatoryTip": {
-        "en": "Produce 'ch' in 'nach', 'acht', 'kocht', and 'auch' at the soft palate (velum), contrasting cleanly with the palatal 'ch' in 'ich'.",
-        "it": "Articola il nesso 'ch' di 'nach', 'acht', 'kocht' e 'auch' sul velo palatino, distinguendolo nettamente dal suono palatale di 'ich'."
+        "en": "Remember that German 'Z' in 'Zug' is always pronounced crisp like 'ts' (tsug).",
+        "it": "Ricorda che la 'Z' tedesca in 'Zug' si legge sempre aspra come 'ts' (tsug)."
       }
     },
     {
-      "id": "de_b1_spk_01",
+      "id": "de_b1_s1",
       "cefr": "B1",
-      "targetSentence": "Selbstverständlich berücksichtigen wir Ihre außergewöhnlichen Vorschläge.",
-      "furiganaOrReading": "Compound word primary stress & consonant clusters",
-      "fullIpa": "/ˈzɛlpstfɛɐ̯ˌʃtɛntlɪç bəˈʁʏkzɪçtɪɡn̩ viːɐ̯ ˈiːʁə ˈaʊsɐɡəˌvøːnlɪçn̩ ˈfoːɐ̯ʃlɛːɡə/",
+      "targetSentence": "Trotz des starken Regens sind wir pünktlich angekommen.",
+      "furiganaOrReading": "Ritmo naturale e accento su 'pünktlich' e 'angekommen'",
+      "fullIpa": "/tʁɔts dɛs ˈʃtaʁkn̩ ˈʁeːɡn̩s zɪnt viːɐ̯ ˈpʏŋktlɪç ˈanɡəkɔmən/",
       "translation": {
-        "en": "Naturally we take your extraordinary suggestions into account.",
-        "it": "Naturalmente teniamo in considerazione le Sue proposte straordinarie."
+        "en": "Despite the heavy rain we arrived on time.",
+        "it": "Nonostante la forte pioggia siamo arrivati puntuali."
       },
-      "criticalPhonemes": [
-        {
-          "grapheme": "ö",
-          "ipa": "øː",
-          "trapDescription": {
-            "en": "Long close-mid front rounded vowel [øː] in 'außergewöhnlichen': pronounce [eː] with rounded lips.",
-            "it": "Vocale anteriore medio-chiusa arrotondata lunga [øː] in 'außergewöhnlichen': imposta [eː] con labbra arrotondate."
-          }
-        },
-        {
-          "grapheme": "r",
-          "ipa": "ʁ",
-          "trapDescription": {
-            "en": "Voiced uvular fricative [ʁ] before vowels in 'berücksichtigen' and 'Ihre'.",
-            "it": "Fricativa uvulare sonora [ʁ] in posizione prevocalica in 'berücksichtigen' e 'Ihre'."
-          }
-        }
-      ],
+      "criticalPhonemes": [],
       "articulatoryTip": {
-        "en": "In separable and prefixed verbs like 'berücksichtigen', never stress the unstressed prefix 'be-' [bə]; place primary stress on '-rück-'.",
-        "it": "Nei verbi con prefisso inseparabile come 'berücksichtigen', non accentare mai il prefisso 'be-' [bə]; l'accento cade su '-rück-'."
+        "en": "Place clear emphasis on the first syllable of 'angekommen' (AN-gekommen).",
+        "it": "Appoggia bene la voce sulla prima sillaba 'AN' di 'angekommen'."
       }
     },
     {
-      "id": "de_b2_spk_01",
+      "id": "de_b2_s1",
       "cefr": "B2",
-      "targetSentence": "Je gründlicher die wissenschaftlichen Zusammenhänge erörtert werden, desto überzeugender wirkt das Ergebnis.",
-      "furiganaOrReading": "Glottal stop (Knacklaut) [ʔ] & syllabic nasals",
-      "fullIpa": "/jeː ˈɡʁʏntlɪçɐ diː ˈvɪsn̩ʃaftlɪçn̩ tsuˈzamənhɛŋə ɛɐ̯ˈʔœʁtɐt ˈveːɐ̯dn̩ ˈdɛsto ˌyːbɐˈtsɔʏɡn̩dɐ vɪʁkt das ɛɐ̯ˈɡeːpnɪs/",
+      "targetSentence": "Je sorgfältiger wir die Daten analysieren, desto besser wird das Ergebnis.",
+      "furiganaOrReading": "Fluidità tra proposizione principale e subordinata",
+      "fullIpa": "/jeː ˈzɔʁkfɛltɪɡɐ viːɐ̯ diː ˈdaːtn̩ analyˈziːʁən ˈdɛsto ˈbɛsɐ vɪʁt das ɛɐ̯ˈɡeːpnɪs/",
       "translation": {
-        "en": "The more thoroughly the scientific interconnections are discussed, the more convincing the result appears.",
-        "it": "Più approfonditamente vengono discussi i nessi scientifici, più convincente risulta l'esito."
+        "en": "The more carefully we analyze the data, the better the result becomes.",
+        "it": "Più attentamente analizziamo i dati, migliore diventa il risultato."
       },
-      "criticalPhonemes": [
-        {
-          "grapheme": "er|örtert",
-          "ipa": "ʔœ",
-          "trapDescription": {
-            "en": "Insert a crisp glottal stop (Knacklaut [ʔ]) between the prefix 'er-' and the stem vowel '-örtert'.",
-            "it": "Inserisci un netto colpo di glottide (Knacklaut [ʔ]) tra il prefisso 'er-' e la vocale radicale '-örtert'."
-          }
-        },
-        {
-          "grapheme": "-en",
-          "ipa": "n̩",
-          "trapDescription": {
-            "en": "Unstressed final '-en' in 'wissenschaftlichen' and 'werden' assimilates to a syllabic nasal [n̩].",
-            "it": "La desinenza atona '-en' in 'wissenschaftlichen' e 'werden' si riduce a nasale sillabica [n̩]."
-          }
-        }
-      ],
+      "criticalPhonemes": [],
       "articulatoryTip": {
-        "en": "Mark the morphological boundary inside 'er-örtert' with a clean glottal onset [ʔ] and apply final-obstruent devoicing (Auslautverhärtung) in 'wirkt' and 'Ergebnis'.",
-        "it": "Segna il confine morfologico in 'er-örtert' con l'attacco glottidale [ʔ] e applica la desonorizzazione finale (Auslautverhärtung)."
+        "en": "Keep your voice slightly rising at 'analysieren' before dropping cleanly on 'Ergebnis'.",
+        "it": "Mantieni l'intonazione leggermente sospesa su 'analysieren' per poi scendere su 'Ergebnis'."
       }
     }
   ],
   "scriptCards": [
     {
       "symbol": "ä / Ä",
-      "scriptCategory": "Phonetics",
-      "readingOrFurigana": "Umlaut A",
-      "romajiOrIpa": "/ɛ/ ~ /ɛː/",
+      "scriptCategory": "Suoni Tedeschi",
+      "readingOrFurigana": "A-Umlaut",
+      "romajiOrIpa": "e aperta",
       "meaning": {
-        "en": "Open-mid front unrounded vowel (Mädchen, erklären)",
-        "it": "Vocale anteriore medio-aperta non arrotondata (Mädchen, erklären)"
+        "en": "Pronounced like an open 'e' (Mädchen, spät)",
+        "it": "Si legge come una 'e' aperta italiana (Mädchen = ragazza, spät = tardi)"
       },
-      "exampleWord": "Vorschläge",
-      "exampleReading": "/ˈfoːɐ̯ʃlɛːɡə/",
+      "exampleWord": "spät",
+      "exampleReading": "shpet (tardi)",
       "strokeCount": 3
     },
     {
       "symbol": "ö / Ö",
-      "scriptCategory": "Phonetics",
-      "readingOrFurigana": "Umlaut O",
-      "romajiOrIpa": "/øː/ ~ /œ/",
+      "scriptCategory": "Suoni Tedeschi",
+      "readingOrFurigana": "O-Umlaut",
+      "romajiOrIpa": "oe arrotondata",
       "meaning": {
-        "en": "Front rounded mid vowel (schön, möchte)",
-        "it": "Vocale anteriore arrotondata media (schön, möchte)"
+        "en": "Say 'e' with rounded lips (schön, möchte)",
+        "it": "Pronuncia una 'e' tenendo le labbra arrotondate (schön = bello)"
       },
-      "exampleWord": "möglich",
-      "exampleReading": "/ˈmøːklɪç/",
+      "exampleWord": "schön",
+      "exampleReading": "shœn (bello)",
       "strokeCount": 3
     },
     {
       "symbol": "ü / Ü",
-      "scriptCategory": "Phonetics",
-      "readingOrFurigana": "Umlaut U",
-      "romajiOrIpa": "/yː/ ~ /ʏ/",
+      "scriptCategory": "Suoni Tedeschi",
+      "readingOrFurigana": "U-Umlaut",
+      "romajiOrIpa": "iu stretta",
       "meaning": {
-        "en": "Close front rounded vowel (Bücher, fünf)",
-        "it": "Vocale anteriore alta arrotondata (Bücher, fünf)"
+        "en": "Say 'i' with rounded lips (fünf, Bücher)",
+        "it": "Pronuncia una 'i' con le labbra chiuse a cerchio (fünf = cinque)"
       },
-      "exampleWord": "Prüfung",
-      "exampleReading": "/ˈpʁyːfʊŋ/",
+      "exampleWord": "fünf",
+      "exampleReading": "fynf (cinque)",
       "strokeCount": 3
     },
     {
       "symbol": "ß",
-      "scriptCategory": "Phonetics",
-      "readingOrFurigana": "Eszett / Scharfes S",
-      "romajiOrIpa": "/s/",
+      "scriptCategory": "Suoni Tedeschi",
+      "readingOrFurigana": "Eszett",
+      "romajiOrIpa": "ss sorda",
       "meaning": {
-        "en": "Voiceless alveolar sibilant after long vowels and diphthongs",
-        "it": "Sibilante alveolare sorda dopo vocali lunghe e dittonghi"
+        "en": "Sharp 's' sound after long vowels (Straße, groß)",
+        "it": "Doppia 's' sorda dopo una vocale lunga (Straße = strada, groß = grande)"
       },
-      "exampleWord": "außergewöhnlich",
-      "exampleReading": "/ˈaʊsɐɡəˌvøːnlɪç/",
+      "exampleWord": "Straße",
+      "exampleReading": "shtrasse (strada)",
       "strokeCount": 1
     }
   ]

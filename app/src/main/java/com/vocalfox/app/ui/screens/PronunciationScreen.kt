@@ -24,6 +24,8 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.ArrowBack
+import androidx.compose.material.icons.outlined.ArrowForward
 import androidx.compose.material.icons.outlined.Mic
 import androidx.compose.material.icons.outlined.SlowMotionVideo
 import androidx.compose.material.icons.outlined.Stop
@@ -32,6 +34,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -73,25 +76,27 @@ fun PronunciationScreen(
 ) {
     val context = LocalContext.current
     val colors = VocalFoxTheme.colors
-    val drill = currentPack.pronunciationDrills.firstOrNull { it.cefr == selectedCefr }
-        ?: currentPack.pronunciationDrills.first()
 
-    var selectedWordIndex by remember(drill.id, pronunciationResult) { mutableStateOf(0) }
+    val drillsForLevel = remember(currentPack.languageCode, selectedCefr) {
+        currentPack.pronunciationDrills.filter { it.cefr == selectedCefr }
+            .ifEmpty { currentPack.pronunciationDrills }
+    }
+    var drillIndex by remember(currentPack.languageCode, selectedCefr) { mutableIntStateOf(0) }
+    val drill = drillsForLevel[drillIndex % drillsForLevel.size]
+
+    var selectedWordIndex by remember(drill.id, pronunciationResult) { mutableIntStateOf(0) }
 
     val micPermissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission()
     ) { granted ->
-        if (granted) {
-            onStartRecording(drill)
-        } else {
-            onStopAndEvaluate(drill, null)
-        }
+        if (granted) onStartRecording(drill)
+        else onStopAndEvaluate(drill, null)
     }
 
     val mascotState = when {
         pronunciationResult == null -> MascotState.LOGO_IDLE
         pronunciationResult.overallScore >= 85 -> MascotState.CELEBRATE
-        pronunciationResult.overallScore >= 60 -> MascotState.STRICT_COACH
+        pronunciationResult.overallScore >= 60 -> MascotState.THINKING
         else -> MascotState.ENCOURAGE_SAD
     }
 
@@ -100,47 +105,81 @@ fun PronunciationScreen(
             .fillMaxSize()
             .background(colors.background)
             .verticalScroll(rememberScrollState())
-            .padding(horizontal = 20.dp, vertical = 12.dp),
-        verticalArrangement = Arrangement.spacedBy(20.dp)
+            .padding(horizontal = 20.dp, vertical = 14.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
+        Text(
+            text = strings.pronunciationHeader,
+            style = VocalFoxType.PageTitle,
+            color = colors.primaryText
+        )
+
+        // Full-width level selector (Never squashes the title!)
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            CefrLevel.entries.forEach { level ->
+                val active = level == selectedCefr
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(if (active) colors.accent else colors.card)
+                        .border(1.dp, if (active) colors.accent else colors.hairline, RoundedCornerShape(12.dp))
+                        .clickable { onSelectCefr(level) }
+                        .padding(vertical = 10.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = level.name,
+                        style = VocalFoxType.BodyMedium,
+                        color = if (active) colors.onAccent else colors.primaryText
+                    )
+                }
+            }
+        }
+
+        // Phrase Navigation Counter
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Column {
-                Text(
-                    text = strings.pronunciationHeader,
-                    style = VocalFoxType.PageTitle,
-                    color = colors.primaryText
-                )
-                Text(
-                    text = "${activeVoice.displayName} · ${activeVoice.onnxFileName}",
-                    style = VocalFoxType.MetaMono,
-                    color = colors.mutedText
-                )
-            }
-
-            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                CefrLevel.entries.forEach { level ->
-                    val active = level == selectedCefr
-                    Box(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(VocalFoxTokens.RadiusKeycap))
-                            .background(if (active) colors.accent else colors.raised)
-                            .clickable { onSelectCefr(level) }
-                            .padding(horizontal = 8.dp, vertical = 4.dp)
-                    ) {
-                        Text(
-                            text = level.name,
-                            style = VocalFoxType.MetaMono,
-                            color = if (active) colors.onAccent else colors.secondaryText
-                        )
-                    }
+            Text(
+                text = "Frase ${drillIndex + 1} di ${drillsForLevel.size} · Voce: ${activeVoice.displayName}",
+                style = VocalFoxType.SecondaryCaption,
+                color = colors.secondaryText
+            )
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(colors.card)
+                        .border(1.dp, colors.hairline, RoundedCornerShape(8.dp))
+                        .clickable {
+                            drillIndex = if (drillIndex > 0) drillIndex - 1 else drillsForLevel.lastIndex
+                        }
+                        .padding(8.dp)
+                ) {
+                    Icon(Icons.Outlined.ArrowBack, null, tint = colors.primaryText, modifier = Modifier.size(18.dp))
+                }
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(colors.card)
+                        .border(1.dp, colors.hairline, RoundedCornerShape(8.dp))
+                        .clickable {
+                            drillIndex = (drillIndex + 1) % drillsForLevel.size
+                        }
+                        .padding(8.dp)
+                ) {
+                    Icon(Icons.Outlined.ArrowForward, null, tint = colors.primaryText, modifier = Modifier.size(18.dp))
                 }
             }
         }
 
+        // Main Sentence Card
         Column(
             modifier = Modifier
                 .fillMaxWidth()
@@ -153,7 +192,7 @@ fun PronunciationScreen(
             if (showFurigana && drill.furiganaOrReading.isNotBlank()) {
                 Text(
                     text = drill.furiganaOrReading,
-                    style = VocalFoxType.MetaMono,
+                    style = VocalFoxType.SecondaryCaption,
                     color = colors.accent
                 )
             }
@@ -165,78 +204,50 @@ fun PronunciationScreen(
             )
 
             Text(
-                text = drill.fullIpa,
-                style = VocalFoxType.MetaMono,
+                text = drill.translation.get(systemLang),
+                style = VocalFoxType.Body,
                 color = colors.secondaryText
             )
 
-            Text(
-                text = drill.translation.get(systemLang),
-                style = VocalFoxType.SecondaryCaption,
-                color = colors.mutedText
-            )
-
-            Spacer(modifier = Modifier.height(4.dp))
-
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
             ) {
                 Row(
                     modifier = Modifier
                         .weight(1f)
-                        .clip(RoundedCornerShape(VocalFoxTokens.RadiusControl))
+                        .clip(RoundedCornerShape(12.dp))
                         .background(colors.raised)
-                        .border(1.dp, colors.hairline, RoundedCornerShape(VocalFoxTokens.RadiusControl))
                         .clickable { onPlayTts(drill.targetSentence, 1.0f) }
-                        .padding(vertical = 10.dp),
+                        .padding(vertical = 12.dp),
                     horizontalArrangement = Arrangement.Center,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Icon(
-                        imageVector = Icons.Outlined.VolumeUp,
-                        contentDescription = null,
-                        tint = colors.primaryText,
-                        modifier = Modifier.size(16.dp)
-                    )
+                    Icon(Icons.Outlined.VolumeUp, null, tint = colors.primaryText, modifier = Modifier.size(18.dp))
                     Spacer(modifier = Modifier.width(6.dp))
-                    Text(
-                        text = strings.playNormalAction,
-                        style = VocalFoxType.BodyMedium,
-                        color = colors.primaryText
-                    )
+                    Text(strings.playNormalAction, style = VocalFoxType.BodyMedium, color = colors.primaryText)
                 }
 
                 Row(
                     modifier = Modifier
                         .weight(1f)
-                        .clip(RoundedCornerShape(VocalFoxTokens.RadiusControl))
+                        .clip(RoundedCornerShape(12.dp))
                         .background(colors.raised)
-                        .border(1.dp, colors.hairline, RoundedCornerShape(VocalFoxTokens.RadiusControl))
                         .clickable { onPlayTts(drill.targetSentence, 0.75f) }
-                        .padding(vertical = 10.dp),
+                        .padding(vertical = 12.dp),
                     horizontalArrangement = Arrangement.Center,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Icon(
-                        imageVector = Icons.Outlined.SlowMotionVideo,
-                        contentDescription = null,
-                        tint = colors.primaryText,
-                        modifier = Modifier.size(16.dp)
-                    )
+                    Icon(Icons.Outlined.SlowMotionVideo, null, tint = colors.primaryText, modifier = Modifier.size(18.dp))
                     Spacer(modifier = Modifier.width(6.dp))
-                    Text(
-                        text = strings.playSlowAction,
-                        style = VocalFoxType.BodyMedium,
-                        color = colors.primaryText
-                    )
+                    Text(strings.playSlowAction, style = VocalFoxType.BodyMedium, color = colors.primaryText)
                 }
             }
 
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clip(RoundedCornerShape(VocalFoxTokens.RadiusControl))
+                    .clip(RoundedCornerShape(14.dp))
                     .background(if (isRecording) colors.negative else colors.accent)
                     .clickable {
                         if (isRecording) {
@@ -246,14 +257,11 @@ fun PronunciationScreen(
                                 context,
                                 Manifest.permission.RECORD_AUDIO
                             ) == PackageManager.PERMISSION_GRANTED
-                            if (granted) {
-                                onStartRecording(drill)
-                            } else {
-                                micPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
-                            }
+                            if (granted) onStartRecording(drill)
+                            else micPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
                         }
                     }
-                    .padding(vertical = 12.dp),
+                    .padding(vertical = 14.dp),
                 horizontalArrangement = Arrangement.Center,
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -261,7 +269,7 @@ fun PronunciationScreen(
                     imageVector = if (isRecording) Icons.Outlined.Stop else Icons.Outlined.Mic,
                     contentDescription = null,
                     tint = colors.onAccent,
-                    modifier = Modifier.size(18.dp)
+                    modifier = Modifier.size(20.dp)
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
@@ -269,44 +277,6 @@ fun PronunciationScreen(
                     style = VocalFoxType.BodyMedium,
                     color = colors.onAccent
                 )
-            }
-        }
-
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(VocalFoxTokens.RadiusCard))
-                .background(colors.card)
-                .border(1.dp, colors.hairline, RoundedCornerShape(VocalFoxTokens.RadiusCard))
-                .padding(20.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            Text(
-                text = strings.articulatoryTipLabel,
-                style = VocalFoxType.BodyMedium,
-                color = colors.primaryText
-            )
-            drill.criticalPhonemes.forEach { trap ->
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(VocalFoxTokens.RadiusControl))
-                        .background(colors.raised)
-                        .padding(12.dp),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = "${trap.grapheme} /${trap.ipa}/",
-                        style = VocalFoxType.MetaMono,
-                        color = colors.accent
-                    )
-                    Text(
-                        text = trap.trapDescription.get(systemLang),
-                        style = VocalFoxType.SecondaryCaption,
-                        color = colors.secondaryText
-                    )
-                }
             }
         }
 
@@ -318,32 +288,17 @@ fun PronunciationScreen(
                     .background(colors.card)
                     .border(1.dp, colors.hairline, RoundedCornerShape(VocalFoxTokens.RadiusCard))
                     .padding(20.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
+                verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = strings.phoneticBreakdownTitle,
-                        style = VocalFoxType.BodyMedium,
-                        color = colors.primaryText
-                    )
-                    Text(
-                        text = "${pronunciationResult.overallScore}/100 · ${"%.2f".format(pronunciationResult.durationRatio)}x",
-                        style = VocalFoxType.MetaMono,
-                        color = when {
-                            pronunciationResult.overallScore >= 85 -> colors.positive
-                            pronunciationResult.overallScore >= 65 -> colors.warning
-                            else -> colors.negative
-                        }
-                    )
-                }
+                Text(
+                    text = "${strings.phoneticBreakdownTitle} (${pronunciationResult.overallScore}%)",
+                    style = VocalFoxType.SectionTitle,
+                    color = colors.primaryText
+                )
 
                 FlowRow(
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
                     pronunciationResult.wordFeedbacks.forEachIndexed { idx, wf ->
                         val statusColor = when (wf.status) {
@@ -351,54 +306,23 @@ fun PronunciationScreen(
                             PhonemeAccuracyStatus.STRESS_OR_PITCH -> colors.warning
                             PhonemeAccuracyStatus.MISPRONOUNCED -> colors.negative
                         }
-                        Column(
+                        Box(
                             modifier = Modifier
-                                .clip(RoundedCornerShape(VocalFoxTokens.RadiusControl))
+                                .clip(RoundedCornerShape(10.dp))
                                 .background(if (selectedWordIndex == idx) colors.raised else colors.background)
-                                .clickable { selectedWordIndex = idx }
-                                .padding(horizontal = 10.dp, vertical = 8.dp)
+                                .border(2.dp, statusColor, RoundedCornerShape(10.dp))
+                                .clickable {
+                                    selectedWordIndex = idx
+                                    onPlayTts(wf.word, 0.85f)
+                                }
+                                .padding(horizontal = 12.dp, vertical = 8.dp)
                         ) {
                             Text(
-                                text = wf.word,
+                                text = "${wf.word} · ${wf.score}%",
                                 style = VocalFoxType.BodyMedium,
                                 color = colors.primaryText
                             )
-                            Box(
-                                modifier = Modifier
-                                    .padding(vertical = 4.dp)
-                                    .height(3.dp)
-                                    .width((wf.word.length * 9).coerceAtLeast(24).dp)
-                                    .background(statusColor)
-                            )
-                            Text(
-                                text = "/${wf.observedIpa}/ · ${wf.score}%",
-                                style = VocalFoxType.MetaMono,
-                                color = statusColor
-                            )
                         }
-                    }
-                }
-
-                val inspectedWord = pronunciationResult.wordFeedbacks.getOrNull(selectedWordIndex)
-                if (inspectedWord != null) {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(VocalFoxTokens.RadiusControl))
-                            .background(colors.raised)
-                            .padding(12.dp),
-                        verticalArrangement = Arrangement.spacedBy(4.dp)
-                    ) {
-                        Text(
-                            text = "${inspectedWord.word} — Target /${inspectedWord.expectedIpa}/ vs Observed /${inspectedWord.observedIpa}/",
-                            style = VocalFoxType.MetaMono,
-                            color = colors.primaryText
-                        )
-                        Text(
-                            text = inspectedWord.diagnosticNote,
-                            style = VocalFoxType.SecondaryCaption,
-                            color = colors.secondaryText
-                        )
                     }
                 }
             }
@@ -406,15 +330,10 @@ fun PronunciationScreen(
 
         MascotPedagogicalBanner(
             state = mascotState,
-            title = if (pronunciationResult != null) {
-                "IPA Alignment · ${pronunciationResult.overallScore}%"
-            } else {
-                strings.articulatoryTipLabel
-            },
-            subtitle = drill.articulatoryTip.get(systemLang),
-            metaBadge = drill.cefr.name
+            title = strings.articulatoryTipLabel,
+            subtitle = drill.articulatoryTip.get(systemLang)
         )
 
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(100.dp))
     }
 }
