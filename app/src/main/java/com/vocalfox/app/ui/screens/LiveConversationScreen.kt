@@ -21,7 +21,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
@@ -38,7 +37,6 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
@@ -110,15 +108,15 @@ fun LiveConversationScreen(
             if (currentPack.languageCode == "de") {
                 TutorChatMessage(
                     isUser = false,
-                    text = "Hallo! Ich bin dein VocalFox Tutor (${selectedCefr.name}). Wollen wir über "$selectedScenario" auf Deutsch sprechen?",
-                    translation = if (isIt) "Ciao! Sono il tuo tutor VocalFox (${selectedCefr.name}). Parliamo di "$selectedScenario" in tedesco?" else "Hello! I am your VocalFox tutor. Shall we speak German?",
+                    text = "Hallo! Ich bin dein VocalFox Tutor (${selectedCefr.name}). Wollen wir über '$selectedScenario' auf Deutsch sprechen?",
+                    translation = if (isIt) "Ciao! Sono il tuo tutor VocalFox (${selectedCefr.name}). Parliamo di '$selectedScenario' in tedesco?" else "Hello! I am your VocalFox tutor. Shall we speak German?",
                     grammarCorrection = ""
                 )
             } else {
                 TutorChatMessage(
                     isUser = false,
-                    text = "¡Hola! Soy tu tutor VocalFox (${selectedCefr.name}). ¿Hablamos sobre "$selectedScenario" en español?",
-                    translation = if (isIt) "Ciao! Sono il tuo tutor VocalFox (${selectedCefr.name}). Parliamo di "$selectedScenario" in spagnolo?" else "Hello! I am your VocalFox tutor. Shall we speak Spanish?",
+                    text = "¡Hola! Soy tu tutor VocalFox (${selectedCefr.name}). ¿Hablamos sobre '$selectedScenario' en español?",
+                    translation = if (isIt) "Ciao! Sono il tuo tutor VocalFox (${selectedCefr.name}). Parliamo di '$selectedScenario' in spagnolo?" else "Hello! I am your VocalFox tutor. Shall we speak Spanish?",
                     grammarCorrection = ""
                 )
             }
@@ -181,13 +179,12 @@ fun LiveConversationScreen(
     ) {
         Spacer(modifier = Modifier.height(10.dp))
 
-        // Top Header + API Key Button
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Column {
+            Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = "Live AI Tutor · ${currentPack.languageName.get(systemLang)} (${selectedCefr.name})",
                     style = VocalFoxType.PageTitle,
@@ -214,7 +211,6 @@ fun LiveConversationScreen(
 
         Spacer(modifier = Modifier.height(10.dp))
 
-        // Inline Gemini API Key Setup Box
         if (showInlineKeyEditor) {
             Column(
                 modifier = Modifier
@@ -276,7 +272,6 @@ fun LiveConversationScreen(
             Spacer(modifier = Modifier.height(10.dp))
         }
 
-        // Scenario Picker Row
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -313,14 +308,12 @@ fun LiveConversationScreen(
             )
         }
 
-        // Conversation Messages List
         LazyColumn(
             modifier = Modifier.weight(1f),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             items(messages) { msg ->
                 if (!msg.isUser) {
-                    // Fox Tutor Bubble + Audio + Feedback
                     Column(
                         modifier = Modifier.fillMaxWidth(),
                         verticalArrangement = Arrangement.spacedBy(8.dp)
@@ -334,7 +327,7 @@ fun LiveConversationScreen(
                                     .padding(12.dp)
                             ) {
                                 Text(
-                                    text = "💡 ${msg.grammarCorrection}",
+                                    text = "Consiglio: ${msg.grammarCorrection}",
                                     style = VocalFoxType.SecondaryCaption,
                                     color = VocalFoxPalette.FoxDeepInkBrown
                                 )
@@ -405,7 +398,6 @@ fun LiveConversationScreen(
                         }
                     }
                 } else {
-                    // User Message Bubble (Right aligned)
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.End
@@ -450,7 +442,6 @@ fun LiveConversationScreen(
             item { Spacer(modifier = Modifier.height(8.dp)) }
         }
 
-        // Input Row (Voice Mic + Text Field + Send Button) padded above the floating bottom bar
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -458,7 +449,6 @@ fun LiveConversationScreen(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Voice Input Button
             Box(
                 modifier = Modifier
                     .size(48.dp)
@@ -482,7 +472,6 @@ fun LiveConversationScreen(
                 Icon(Icons.Outlined.Mic, contentDescription = "Speak", tint = colors.accent, modifier = Modifier.size(22.dp))
             }
 
-            // Text Input Box
             Box(
                 modifier = Modifier
                     .weight(1f)
@@ -507,7 +496,6 @@ fun LiveConversationScreen(
                 )
             }
 
-            // Send Button
             Box(
                 modifier = Modifier
                     .size(48.dp)
