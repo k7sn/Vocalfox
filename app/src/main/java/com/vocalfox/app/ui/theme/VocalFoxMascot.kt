@@ -7,6 +7,12 @@ import android.graphics.ImageDecoder
 import android.graphics.drawable.AnimatedImageDrawable
 import android.os.Build
 import android.widget.ImageView
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -17,15 +23,18 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
@@ -36,9 +45,12 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
+import java.util.ArrayDeque
 
 enum class MascotState(val drawableName: String) {
     LOGO_IDLE("mascot_idle"),
@@ -50,39 +62,124 @@ enum class MascotState(val drawableName: String) {
 }
 
 /**
- * Automatically trims excess white or transparent margins around mascot PNGs
- * so every pose is optically centered and fills its container generously.
+ * Corner Flood-Fill Alpha Matte & Auto-Cropper:
+ * Samples the 4 outer corners of any drawable (`vocalfox_text`, `splash_screen`, `mascot_*`).
+ * If the outer background is near-black (r<40, g<40, b<40) or near-white (r>228, g>228, b>228),
+ * performs a breadth-first flood fill inward from the edges to make the background 100% transparent
+ * without ever erasing the dark brown paws/ears inside the fox silhouette.
  */
 object MascotBitmapCache {
     private val cache = mutableMapOf<String, ImageBitmap>()
 
-    fun getTrimmedBitmap(context: Context, resourceName: String, trimWhiteBg: Boolean): ImageBitmap? {
-        val cacheKey = "${resourceName}_$trimWhiteBg"
+    fun getTrimmedBitmap(
+        context: Context,
+        resourceName: String,
+        stripBackground: Boolean = true
+    ): ImageBitmap? {
+        val cacheKey = "${resourceName}_$stripBackground"
         cache[cacheKey]?.let { return it }
 
         val resId = context.resources.getIdentifier(resourceName, "drawable", context.packageName)
         if (resId == 0) return null
 
-        val raw = BitmapFactory.decodeResource(context.resources, resId) ?: return null
-        if (!trimWhiteBg) {
+        val options = BitmapFactory.Options().apply {
+            inPreferredConfig = Bitmap.Config.ARGB_8888
+        }
+        val raw = BitmapFactory.decodeResource(context.resources, resId, options) ?: return null
+        if (!stripBackground) {
             val img = raw.asImageBitmap()
             cache[cacheKey] = img
             return img
         }
 
-        val trimmed = trimWhitespaceAndMakeTransparent(raw)
-        val result = trimmed.asImageBitmap()
+        val processed = floodFillOuterBackgroundAndCrop(raw)
+        val result = processed.asImageBitmap()
         cache[cacheKey] = result
         return result
     }
 
-    private fun trimWhitespaceAndMakeTransparent(src: Bitmap): Bitmap {
+    fun hasOpaqueBlackOrWhiteCorners(context: Context, resourceName: String): Boolean {
+        val resId = context.resources.getIdentifier(resourceName, "drawable", context.packageName)
+        if (resId == 0) return false
+        val raw = BitmapFactory.decodeResource(context.resources, resId) ?: return false
+        if (raw.width < 4 || raw.height < 4) return false
+        val c = raw.getPixel(0, 0)
+        val a = (c ushr 24) and 0xFF
+        val r = (c ushr 16) and 0xFF
+        val g = (c ushr 8) and 0xFF
+        val b = c and 0xFF
+        return a > 200 && ((r < 40 && g < 40 && b < 40) || (r > 228 && g > 228 && b > 228))
+    }
+
+    private fun floodFillOuterBackgroundAndCrop(src: Bitmap): Bitmap {
         val w = src.width
         val h = src.height
         if (w <= 4 || h <= 4) return src
 
         val pixels = IntArray(w * h)
         src.getPixels(pixels, 0, w, 0, 0, w, h)
+
+        val corners = intArrayOf(
+            pixels[0],
+            pixels[w - 1],
+            pixels[(h - 1) * w],
+            pixels[(h - 1) * w + (w - 1)]
+        )
+
+        var detectBlackBg = false
+        var detectWhiteBg = false
+        for (c in corners) {
+            val a = (c ushr 24) and 0xFF
+            val r = (c ushr 16) and 0xFF
+            val g = (c ushr 8) and 0xFF
+            val b = c and 0xFF
+            if (a > 40 && r < 42 && g < 42 && b < 42) detectBlackBg = true
+            if (a > 40 && r > 225 && g > 225 && b > 225) detectWhiteBg = true
+        }
+
+        if (detectBlackBg || detectWhiteBg) {
+            val visited = BooleanArray(w * h)
+            val queue = ArrayDeque<Int>(w * 2 + h * 2)
+
+            fun matchesBg(color: Int): Boolean {
+                val a = (color ushr 24) and 0xFF
+                if (a < 25) return true
+                val r = (color ushr 16) and 0xFF
+                val g = (color ushr 8) and 0xFF
+                val b = color and 0xFF
+                if (detectBlackBg && r < 45 && g < 45 && b < 45) return true
+                if (detectWhiteBg && r > 224 && g > 224 && b > 224) return true
+                return false
+            }
+
+            fun enqueueIfBg(x: Int, y: Int) {
+                val idx = y * w + x
+                if (!visited[idx] && matchesBg(pixels[idx])) {
+                    visited[idx] = true
+                    queue.addLast(idx)
+                }
+            }
+
+            for (x in 0 until w) {
+                enqueueIfBg(x, 0)
+                enqueueIfBg(x, h - 1)
+            }
+            for (y in 0 until h) {
+                enqueueIfBg(0, y)
+                enqueueIfBg(w - 1, y)
+            }
+
+            while (!queue.isEmpty()) {
+                val idx = queue.removeFirst()
+                pixels[idx] = 0x00000000
+                val x = idx % w
+                val y = idx / w
+                if (x > 0) enqueueIfBg(x - 1, y)
+                if (x < w - 1) enqueueIfBg(x + 1, y)
+                if (y > 0) enqueueIfBg(x, y - 1)
+                if (y < h - 1) enqueueIfBg(x, y + 1)
+            }
+        }
 
         var minX = w
         var minY = h
@@ -92,22 +189,8 @@ object MascotBitmapCache {
         for (y in 0 until h) {
             val rowOffset = y * w
             for (x in 0 until w) {
-                val c = pixels[rowOffset + x]
-                val a = (c ushr 24) and 0xFF
-                val r = (c ushr 16) and 0xFF
-                val g = (c ushr 8) and 0xFF
-                val b = c and 0xFF
-
-                // Treat near-white background pixels or transparent pixels as empty margin
-                val isNearWhiteOrGreyShadow = (r > 236 && g > 236 && b > 236)
-                val isEmpty = (a < 25) || isNearWhiteOrGreyShadow
-
-                if (isNearWhiteOrGreyShadow) {
-                    // Make outer white background transparent so the fox blends on tinted cards
-                    pixels[rowOffset + x] = 0x00000000
-                }
-
-                if (!isEmpty) {
+                val a = (pixels[rowOffset + x] ushr 24) and 0xFF
+                if (a > 25) {
                     if (x < minX) minX = x
                     if (x > maxX) maxX = x
                     if (y < minY) minY = y
@@ -119,8 +202,8 @@ object MascotBitmapCache {
         val cleaned = Bitmap.createBitmap(pixels, w, h, Bitmap.Config.ARGB_8888)
         if (maxX <= minX || maxY <= minY) return cleaned
 
-        val padX = ((maxX - minX) * 0.04f).toInt().coerceAtLeast(2)
-        val padY = ((maxY - minY) * 0.04f).toInt().coerceAtLeast(2)
+        val padX = ((maxX - minX) * 0.03f).toInt().coerceAtLeast(2)
+        val padY = ((maxY - minY) * 0.03f).toInt().coerceAtLeast(2)
         val cropLeft = (minX - padX).coerceAtLeast(0)
         val cropTop = (minY - padY).coerceAtLeast(0)
         val cropRight = (maxX + padX).coerceAtMost(w - 1)
@@ -132,6 +215,44 @@ object MascotBitmapCache {
             cropTop,
             (cropRight - cropLeft + 1).coerceAtLeast(1),
             (cropBottom - cropTop + 1).coerceAtLeast(1)
+        )
+    }
+}
+
+/**
+ * Brand Wordmark Composable loading `res/drawable-nodpi/vocalfox_text.png`
+ * with automatic black-background removal.
+ */
+@Composable
+fun VocalFoxWordmark(
+    height: Dp = 32.dp,
+    modifier: Modifier = Modifier
+) {
+    val context = LocalContext.current
+    val wordmarkBitmap = remember {
+        MascotBitmapCache.getTrimmedBitmap(
+            context = context,
+            resourceName = "vocalfox_text",
+            stripBackground = true
+        )
+    }
+
+    if (wordmarkBitmap != null) {
+        Image(
+            bitmap = wordmarkBitmap,
+            contentDescription = "VocalFox",
+            contentScale = ContentScale.Fit,
+            modifier = modifier.height(height)
+        )
+    } else {
+        Text(
+            text = "Vocalfox",
+            style = VocalFoxType.PageTitle.copy(
+                fontWeight = FontWeight.ExtraBold,
+                fontSize = (height.value * 0.82f).sp,
+                color = VocalFoxPalette.FoxFurOrange
+            ),
+            modifier = modifier
         )
     }
 }
@@ -151,7 +272,7 @@ fun VocalFoxMascot(
         MascotBitmapCache.getTrimmedBitmap(
             context = context,
             resourceName = resourceName,
-            trimWhiteBg = !useLogoEmblem
+            stripBackground = !useLogoEmblem
         )
     }
 
@@ -182,8 +303,9 @@ fun VocalFoxMascot(
 }
 
 /**
- * Renders `splash_screen.webp` (animated WebP with alpha transparency) natively via Android ImageDecoder.
- * Falls back to the trimmed mascot if `splash_screen.webp` is not yet in `res/drawable-nodpi/`.
+ * Plays `splash_screen.webp` without any black square!
+ * If `splash_screen.webp` has a solid black/white background baked in, it strips the background
+ * via Flood-Fill and animates the character smoothly on a transparent canvas.
  */
 @Composable
 fun AnimatedWebpSplashPlayer(
@@ -194,16 +316,26 @@ fun AnimatedWebpSplashPlayer(
     val splashResId = remember {
         context.resources.getIdentifier("splash_screen", "drawable", context.packageName)
     }
+    val hasOpaqueCorners = remember(splashResId) {
+        if (splashResId != 0) {
+            MascotBitmapCache.hasOpaqueBlackOrWhiteCorners(context, "splash_screen")
+        } else false
+    }
 
-    if (splashResId != 0 && Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+    if (splashResId != 0 && !hasOpaqueCorners && Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
         AndroidView(
-            modifier = modifier.size(size),
+            modifier = modifier
+                .size(size)
+                .background(Color.Transparent),
             factory = { ctx ->
                 ImageView(ctx).apply {
+                    setBackgroundColor(android.graphics.Color.TRANSPARENT)
                     scaleType = ImageView.ScaleType.FIT_CENTER
                     try {
                         val source = ImageDecoder.createSource(ctx.resources, splashResId)
-                        val drawable = ImageDecoder.decodeDrawable(source)
+                        val drawable = ImageDecoder.decodeDrawable(source) { decoder, _, _ ->
+                            decoder.isMutableRequired = false
+                        }
                         setImageDrawable(drawable)
                         if (drawable is AnimatedImageDrawable) {
                             drawable.repeatCount = AnimatedImageDrawable.REPEAT_INFINITE
@@ -214,10 +346,38 @@ fun AnimatedWebpSplashPlayer(
             }
         )
     } else {
-        VocalFoxMascot(
-            state = MascotState.CELEBRATE,
-            size = size
+        val cleanedSplashBitmap = remember(splashResId) {
+            if (splashResId != 0) {
+                MascotBitmapCache.getTrimmedBitmap(context, "splash_screen", stripBackground = true)
+            } else null
+        }
+        val transition = rememberInfiniteTransition(label = "splash_pulse")
+        val pulseScale by transition.animateFloat(
+            initialValue = 0.94f,
+            targetValue = 1.04f,
+            animationSpec = infiniteRepeatable(
+                animation = tween(900, easing = FastOutSlowInEasing),
+                repeatMode = RepeatMode.Reverse
+            ),
+            label = "scale"
         )
+
+        if (cleanedSplashBitmap != null) {
+            Image(
+                bitmap = cleanedSplashBitmap,
+                contentDescription = "VocalFox Splash",
+                contentScale = ContentScale.Fit,
+                modifier = modifier
+                    .size(size)
+                    .scale(pulseScale)
+            )
+        } else {
+            VocalFoxMascot(
+                state = MascotState.CELEBRATE,
+                size = size,
+                modifier = modifier.scale(pulseScale)
+            )
+        }
     }
 }
 

@@ -23,8 +23,10 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -70,15 +72,13 @@ import com.vocalfox.app.ui.theme.MascotState
 import com.vocalfox.app.ui.theme.VocalFoxMascot
 import com.vocalfox.app.ui.theme.VocalFoxPalette
 import com.vocalfox.app.ui.theme.VocalFoxTheme
-import com.vocalfox.app.ui.theme.VocalFoxTokens
 import com.vocalfox.app.ui.theme.VocalFoxType
+import com.vocalfox.app.ui.theme.VocalFoxWordmark
 
-/**
- * Data holder for a complete 4-Step Guided Lesson Unit
- */
 data class GuidedUnitBundle(
     val unitIndex: Int,
     val cefr: CefrLevel,
+    val chapterBadge: String = "",
     val title: String,
     val subtitle: String,
     val durationMinutes: Int,
@@ -103,21 +103,14 @@ fun SplashScreenOverlay(
     ) {
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+            verticalArrangement = Arrangement.spacedBy(20.dp)
         ) {
             AnimatedWebpSplashPlayer(size = 240.dp)
-            Text(
-                text = "VocalFox",
-                style = VocalFoxType.PageTitle,
-                color = colors.primaryText
-            )
+            VocalFoxWordmark(height = 44.dp)
         }
     }
 }
 
-/**
- * First-Launch Onboarding + 4-Question Adaptive Placement Test
- */
 @Composable
 fun OnboardingScreen(
     allPacks: Map<String, LanguagePack>,
@@ -144,11 +137,13 @@ fun OnboardingScreen(
         modifier = Modifier
             .fillMaxSize()
             .background(colors.background)
+            .statusBarsPadding()
+            .navigationBarsPadding()
             .verticalScroll(rememberScrollState())
             .padding(24.dp),
         verticalArrangement = Arrangement.spacedBy(20.dp)
     ) {
-        Spacer(modifier = Modifier.height(8.dp))
+        VocalFoxWordmark(height = 34.dp)
 
         if (!inPlacementMode) {
             Row(
@@ -206,7 +201,7 @@ fun OnboardingScreen(
                 }
             }
 
-            // 2. Target Language
+            // 2. Target Language (Spanish & German)
             Text(
                 text = strings.chooseTargetLanguageLabel,
                 style = VocalFoxType.BodyMedium,
@@ -216,9 +211,8 @@ fun OnboardingScreen(
                 allPacks.values.forEach { p ->
                     val isSelected = p.languageCode == selectedLangCode
                     val flagBadge = when (p.languageCode) {
-                        "es" -> "ES · Español"
-                        "de" -> "DE · Deutsch"
-                        "ja" -> "JA · 日本語"
+                        "es" -> "ES · Español (200 Unità A1–B2)"
+                        "de" -> "DE · Deutsch (200 Unità A1–B2)"
                         else -> p.languageCode.uppercase()
                     }
                     Row(
@@ -268,8 +262,6 @@ fun OnboardingScreen(
                 }
             }
 
-            Spacer(modifier = Modifier.height(4.dp))
-
             // Option A: Start from Scratch (A1)
             Row(
                 modifier = Modifier
@@ -303,7 +295,7 @@ fun OnboardingScreen(
                 )
             }
 
-            // Option B: Quick 4-Question Placement Test
+            // Option B: Quick Placement Test
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -341,7 +333,6 @@ fun OnboardingScreen(
                 )
             }
         } else {
-            // Adaptive Placement Quiz
             val currentQ = placementQuestions.getOrNull(questionIdx)
             if (currentQ != null) {
                 val options = remember(currentQ.id) {
@@ -421,7 +412,13 @@ fun OnboardingScreen(
 }
 
 /**
- * Full-Screen 4-Step Guided Lesson Session (Zero TTS Spoilers, Interactive Word Bank, Pronunciation)
+ * Full-Screen 5-Step Guided Lesson Session:
+ * Step 0: Discovery Cards & Rule
+ * Step 1: Multiple-Choice Comprehension (Zero Spoiler)
+ * Step 2: Verb / Pronoun / Meaning Match
+ * Step 3: Interactive Sentence Builder (Word Bank with Audio)
+ * Step 4: Final Pronunciation & Shadowing
+ * Step 5: Celebration Summary
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -439,10 +436,11 @@ fun GuidedLessonScreen(
 ) {
     val context = LocalContext.current
     val colors = VocalFoxTheme.colors
-    var currentStep by remember(bundle.unitIndex) { mutableIntStateOf(0) } // 0..4 (4 = Summary)
+    val isIt = systemLang == SystemLang.IT
+    var currentStep by remember(bundle.unitIndex) { mutableIntStateOf(0) } // 0..5
 
     val animatedProgress by animateFloatAsState(
-        targetValue = (currentStep + 1) / 5f,
+        targetValue = (currentStep + 1) / 6f,
         animationSpec = tween(300),
         label = "lesson_progress"
     )
@@ -458,6 +456,8 @@ fun GuidedLessonScreen(
         modifier = Modifier
             .fillMaxSize()
             .background(colors.background)
+            .statusBarsPadding()
+            .navigationBarsPadding()
             .padding(horizontal = 20.dp, vertical = 14.dp)
     ) {
         // Top Progress Bar + Close Button
@@ -468,7 +468,7 @@ fun GuidedLessonScreen(
         ) {
             Box(
                 modifier = Modifier
-                    .size(36.dp)
+                    .size(40.dp)
                     .clip(CircleShape)
                     .background(colors.raised)
                     .clickable(onClick = onClose),
@@ -478,7 +478,7 @@ fun GuidedLessonScreen(
                     imageVector = Icons.Outlined.Close,
                     contentDescription = null,
                     tint = colors.primaryText,
-                    modifier = Modifier.size(18.dp)
+                    modifier = Modifier.size(20.dp)
                 )
             }
 
@@ -493,7 +493,7 @@ fun GuidedLessonScreen(
             )
 
             Text(
-                text = "${(currentStep + 1).coerceAtMost(4)}/4",
+                text = "${(currentStep + 1).coerceAtMost(5)}/5",
                 style = VocalFoxType.MetaMono,
                 color = colors.secondaryText
             )
@@ -510,7 +510,7 @@ fun GuidedLessonScreen(
             label = "step_transition"
         ) { step ->
             when (step) {
-                // STEP 0: Vocabulary & Concept Discovery (Tap any word to hear TTS)
+                // STEP 0: Vocabulary & Concept Discovery
                 0 -> {
                     Column(
                         modifier = Modifier
@@ -519,7 +519,7 @@ fun GuidedLessonScreen(
                         verticalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
                         Text(
-                            text = strings.stepLearnWords,
+                            text = "${bundle.cefr.name} · Unità ${bundle.unitIndex + 1} · ${strings.stepLearnWords}",
                             style = VocalFoxType.MetaMono,
                             color = colors.accent
                         )
@@ -534,7 +534,6 @@ fun GuidedLessonScreen(
                             color = colors.secondaryText
                         )
 
-                        // Interactive Vocabulary Cards with Audio
                         bundle.grammarExercise.syntaxTokens.forEach { token ->
                             Row(
                                 modifier = Modifier
@@ -580,7 +579,7 @@ fun GuidedLessonScreen(
 
                         MascotPedagogicalBanner(
                             state = MascotState.THINKING,
-                            title = bundle.cefr.name,
+                            title = if (isIt) "Regola chiave" else "Key rule",
                             subtitle = bundle.grammarExercise.explanation.get(systemLang)
                         )
 
@@ -593,7 +592,7 @@ fun GuidedLessonScreen(
                     }
                 }
 
-                // STEP 1: Multiple-Choice Quiz (ZERO TTS SPOILER — tapping an option speaks ONLY that option)
+                // STEP 1: Multiple-Choice Quiz (Zero TTS Spoiler)
                 1 -> {
                     val ex = bundle.grammarExercise
                     val options = remember(ex.id) {
@@ -652,7 +651,6 @@ fun GuidedLessonScreen(
                                         .clickable {
                                             picked = option
                                             verified = false
-                                            // Speak ONLY the tapped option word so there is zero spoiler!
                                             onSpeakText(option, 1.0f)
                                         }
                                         .padding(16.dp),
@@ -689,7 +687,6 @@ fun GuidedLessonScreen(
                             onClick = {
                                 if (!verified && picked != null) {
                                     verified = true
-                                    // Now that the user answered, speak the complete sentence!
                                     onSpeakText(ex.promptSentence.replace("___", ex.blankTarget), 1.0f)
                                 } else if (verified) {
                                     currentStep = 2
@@ -699,14 +696,106 @@ fun GuidedLessonScreen(
                     }
                 }
 
-                // STEP 2: Interactive Sentence Builder (Word Bank with Audio on each tile)
+                // STEP 2: Meaning & Inflection Comprehension Check
                 2 -> {
+                    val tokens = bundle.grammarExercise.syntaxTokens
+                    val targetToken = tokens.firstOrNull()
+                    val correctMeaning = targetToken?.gloss?.get(systemLang).orEmpty()
+                    val distractorMeanings = remember(bundle.unitIndex) {
+                        val otherGlosses = tokens.drop(1).map { it.gloss.get(systemLang) }
+                        val defaults = if (isIt) listOf("Ieri sera tardi", "Domani pomeriggio") else listOf("Late last night", "Tomorrow afternoon")
+                        (listOf(correctMeaning) + otherGlosses + defaults).distinct().take(4).shuffled()
+                    }
+                    var pickedMeaning by remember(bundle.unitIndex) { mutableStateOf<String?>(null) }
+                    var verifiedMeaning by remember(bundle.unitIndex) { mutableStateOf(false) }
+
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .verticalScroll(rememberScrollState()),
+                        verticalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
+                        Text(
+                            text = if (isIt) "Passo 3 · Riconosci il significato" else "Step 3 · Meaning check",
+                            style = VocalFoxType.MetaMono,
+                            color = colors.accent
+                        )
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(16.dp))
+                                .background(colors.card)
+                                .border(1.dp, colors.hairline, RoundedCornerShape(16.dp))
+                                .clickable { onSpeakText(targetToken?.surface.orEmpty(), 1.0f) }
+                                .padding(20.dp),
+                            verticalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            Text(
+                                text = if (isIt) "Cosa significa questa espressione?" else "What does this expression mean?",
+                                style = VocalFoxType.SecondaryCaption,
+                                color = colors.secondaryText
+                            )
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(10.dp)
+                            ) {
+                                Icon(Icons.Outlined.VolumeUp, null, tint = colors.accent)
+                                Text(
+                                    text = targetToken?.surface.orEmpty(),
+                                    style = VocalFoxType.PageTitle,
+                                    color = colors.primaryText
+                                )
+                            }
+                        }
+
+                        distractorMeanings.forEach { mOpt ->
+                            val selected = pickedMeaning == mOpt
+                            val borderCol = when {
+                                verifiedMeaning && mOpt == correctMeaning -> colors.positive
+                                verifiedMeaning && selected && mOpt != correctMeaning -> colors.negative
+                                selected -> colors.accent
+                                else -> colors.hairline
+                            }
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clip(RoundedCornerShape(12.dp))
+                                    .background(if (selected) colors.raised else colors.card)
+                                    .border(2.dp, borderCol, RoundedCornerShape(12.dp))
+                                    .clickable {
+                                        pickedMeaning = mOpt
+                                        verifiedMeaning = false
+                                    }
+                                    .padding(16.dp)
+                            ) {
+                                Text(mOpt, style = VocalFoxType.BodyMedium, color = colors.primaryText)
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.weight(1f))
+
+                        PrimaryBottomButton(
+                            text = if (!verifiedMeaning) strings.checkButton else strings.continueButton,
+                            onClick = {
+                                if (!verifiedMeaning && pickedMeaning != null) {
+                                    verifiedMeaning = true
+                                } else if (verifiedMeaning) {
+                                    currentStep = 3
+                                }
+                            }
+                        )
+                    }
+                }
+
+                // STEP 3: Interactive Sentence Builder (Word Bank with Audio on each tile)
+                3 -> {
                     val wrt = bundle.writingExercise
                     val targetSentence = wrt.referenceTargets.firstOrNull().orEmpty()
                     val allWords = remember(wrt.id) {
                         targetSentence
                             .replace(".", "")
                             .replace(",", "")
+                            .replace("¿", "")
                             .replace("?", "")
                             .split(" ")
                             .filter { it.isNotBlank() }
@@ -724,7 +813,7 @@ fun GuidedLessonScreen(
                         verticalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
                         Text(
-                            text = strings.stepBuildSentence,
+                            text = if (isIt) "Passo 4 · Componi la frase" else "Step 4 · Build the sentence",
                             style = VocalFoxType.MetaMono,
                             color = colors.accent
                         )
@@ -734,7 +823,6 @@ fun GuidedLessonScreen(
                             color = colors.secondaryText
                         )
 
-                        // Prompt to translate
                         Column(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -749,14 +837,8 @@ fun GuidedLessonScreen(
                                 style = VocalFoxType.SentenceDisplay,
                                 color = colors.primaryText
                             )
-                            Text(
-                                text = wrt.grammarRuleTitle.get(systemLang),
-                                style = VocalFoxType.SecondaryCaption,
-                                color = colors.mutedText
-                            )
                         }
 
-                        // Assembled Sentence Area
                         FlowRow(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -789,7 +871,6 @@ fun GuidedLessonScreen(
                             }
                         }
 
-                        // Shuffled Word Bank Tiles
                         FlowRow(
                             horizontalArrangement = Arrangement.spacedBy(10.dp),
                             verticalArrangement = Arrangement.spacedBy(10.dp)
@@ -834,15 +915,15 @@ fun GuidedLessonScreen(
                                     checked = true
                                     onSpeakText(targetSentence, 1.0f)
                                 } else if (checked) {
-                                    currentStep = 3
+                                    currentStep = 4
                                 }
                             }
                         )
                     }
                 }
 
-                // STEP 3: Final Pronunciation & Shadowing
-                3 -> {
+                // STEP 4: Final Pronunciation & Shadowing
+                4 -> {
                     val drill = bundle.pronunciationDrill
                     Column(
                         modifier = Modifier
@@ -851,7 +932,7 @@ fun GuidedLessonScreen(
                         verticalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
                         Text(
-                            text = strings.stepSpeakAloud,
+                            text = if (isIt) "Passo 5 · Ascolta e pronuncia" else "Step 5 · Listen & speak aloud",
                             style = VocalFoxType.MetaMono,
                             color = colors.accent
                         )
@@ -985,14 +1066,14 @@ fun GuidedLessonScreen(
                         PrimaryBottomButton(
                             text = strings.finishUnitButton,
                             onClick = {
-                                onCompleteUnit(bundle, pronunciationResult?.overallScore ?: 90)
-                                currentStep = 4
+                                onCompleteUnit(bundle, pronunciationResult?.overallScore ?: 95)
+                                currentStep = 5
                             }
                         )
                     }
                 }
 
-                // STEP 4: Celebratory Completion Screen
+                // STEP 5: Celebratory Completion Screen
                 else -> {
                     Column(
                         modifier = Modifier.fillMaxSize(),

@@ -21,7 +21,10 @@ class PackLoader(private val context: Context) {
     fun loadAllLanguagePacks(): Map<String, LanguagePack> {
         val packs = linkedMapOf<String, LanguagePack>()
         val files = try {
-            context.assets.list("packs").orEmpty().filter { it.endsWith("_pack.json") }.sorted()
+            context.assets.list("packs")
+                .orEmpty()
+                .filter { it.endsWith("_pack.json") && !it.startsWith("ja") }
+                .sorted()
         } catch (_: Throwable) {
             emptyList()
         }
@@ -30,7 +33,9 @@ class PackLoader(private val context: Context) {
             try {
                 val rawJson = context.assets.open("packs/$fileName").bufferedReader().use { it.readText() }
                 val pack = json.decodeFromString<LanguagePack>(rawJson)
-                packs[pack.languageCode] = pack
+                if (pack.languageCode != "ja") {
+                    packs[pack.languageCode] = pack
+                }
             } catch (e: Throwable) {
                 e.printStackTrace()
             }
@@ -47,7 +52,7 @@ class PackLoader(private val context: Context) {
             languageCode = "es",
             languageName = LocalizedText("Spanish", "Spagnolo"),
             availableVoices = listOf(
-                VoicePreset("es_ES-carlfm-high", "Carlos (Castilian)", "Male", "Warm baritone", "es_ES-carlfm-high.onnx")
+                VoicePreset("es_ES-carlfm-high", "Carlos (Spagna)", "Maschile", "Calda e naturale", "es_ES-carlfm-high.onnx")
             ),
             grammarExercises = listOf(
                 GrammarSyntaxExercise(
@@ -73,8 +78,8 @@ class PackLoader(private val context: Context) {
                 WritingExercise(
                     id = "fallback_es_wrt",
                     cefr = CefrLevel.A1,
-                    sourcePrompt = LocalizedText("Translate: We want two coffees, please.", "Traduci: Vorremmo due caffè, per favore."),
-                    referenceTargets = listOf("Queremos dos cafés, por favor."),
+                    sourcePrompt = LocalizedText("We want two coffees, please.", "Vorremmo due caffè, per favore."),
+                    referenceTargets = listOf("Queremos dos cafés por favor"),
                     requiredMorphemes = listOf("queremos", "dos"),
                     grammarRuleTitle = LocalizedText("Present indicative", "Presente indicativo"),
                     jitFeedback = LocalizedText("Use 'queremos' for 1st person plural.", "Usa 'queremos' per la 1ª persona plurale.")

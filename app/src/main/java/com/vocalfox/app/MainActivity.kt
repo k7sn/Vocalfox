@@ -14,13 +14,12 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -28,10 +27,10 @@ import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.Bolt
 import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.Explore
+import androidx.compose.material.icons.outlined.Forum
 import androidx.compose.material.icons.outlined.GraphicEq
 import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.PlayArrow
-import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -53,10 +52,11 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModelProvider
 import com.vocalfox.app.ui.i18n.AppStrings
 import com.vocalfox.app.ui.i18n.SystemLang
+import com.vocalfox.app.ui.screens.ExploreStudyHubScreen
 import com.vocalfox.app.ui.screens.GuidedLessonScreen
 import com.vocalfox.app.ui.screens.GuidedUnitBundle
 import com.vocalfox.app.ui.screens.HomeScreen
-import com.vocalfox.app.ui.screens.JapaneseScriptScreen
+import com.vocalfox.app.ui.screens.LiveConversationScreen
 import com.vocalfox.app.ui.screens.OnboardingScreen
 import com.vocalfox.app.ui.screens.PronunciationScreen
 import com.vocalfox.app.ui.screens.SettingsVoiceScreen
@@ -86,7 +86,7 @@ class MainActivity : ComponentActivity() {
 }
 
 private enum class MainTab {
-    TODAY, EXPLORE, SPEECH_LAB, PROFILE
+    TODAY, EXPLORE, LIVE_AI, SPEECH_LAB, PROFILE
 }
 
 @Composable
@@ -102,7 +102,6 @@ private fun VocalFoxRootApp(viewModel: VocalFoxViewModel) {
     val progressList by viewModel.progressList.collectAsState()
     val voiceConfigs by viewModel.voiceConfigs.collectAsState()
     val showFurigana by viewModel.showFurigana.collectAsState()
-    val showRomaji by viewModel.showRomaji.collectAsState()
     val isRecording by viewModel.isRecordingAudio.collectAsState()
     val pronunciationResult by viewModel.latestPronunciationResult.collectAsState()
 
@@ -117,9 +116,8 @@ private fun VocalFoxRootApp(viewModel: VocalFoxViewModel) {
     var activeGuidedUnit by remember { mutableStateOf<GuidedUnitBundle?>(null) }
 
     LaunchedEffect(Unit) {
-        // Default to Italian if not configured yet
         viewModel.setSystemLanguage(SystemLang.IT)
-        delay(1800L)
+        delay(1700L)
         showSplash = false
     }
 
@@ -145,7 +143,6 @@ private fun VocalFoxRootApp(viewModel: VocalFoxViewModel) {
         return
     }
 
-    // Full-Screen Guided Lesson Mode
     val currentUnit = activeGuidedUnit
     if (currentUnit != null) {
         GuidedLessonScreen(
@@ -185,15 +182,19 @@ private fun VocalFoxRootApp(viewModel: VocalFoxViewModel) {
                     onOpenProfileSettings = { activeTab = MainTab.PROFILE }
                 )
 
-                MainTab.EXPLORE -> JapaneseScriptScreen(
+                MainTab.EXPLORE -> ExploreStudyHubScreen(
                     currentPack = currentPack,
                     systemLang = systemLang,
                     strings = strings,
-                    showFurigana = showFurigana,
-                    showRomaji = showRomaji,
-                    onToggleFurigana = viewModel::toggleFurigana,
-                    onToggleRomaji = viewModel::toggleRomaji,
-                    onPlayAudio = { text -> viewModel.speakSentence(text, 0.9f) }
+                    onPlayAudio = { text, speed -> viewModel.speakSentence(text, speed) }
+                )
+
+                MainTab.LIVE_AI -> LiveConversationScreen(
+                    currentPack = currentPack,
+                    selectedCefr = selectedCefr,
+                    systemLang = systemLang,
+                    onSpeakText = { text, speed -> viewModel.speakSentence(text, speed) },
+                    onOpenSettingsForApiKey = { activeTab = MainTab.PROFILE }
                 )
 
                 MainTab.SPEECH_LAB -> PronunciationScreen(
@@ -211,7 +212,11 @@ private fun VocalFoxRootApp(viewModel: VocalFoxViewModel) {
                     onStopAndEvaluate = viewModel::stopAndEvaluatePronunciation
                 )
 
-                MainTab.PROFILE -> Column(modifier = Modifier.fillMaxSize()) {
+                MainTab.PROFILE -> Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .statusBarsPadding()
+                ) {
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -221,7 +226,7 @@ private fun VocalFoxRootApp(viewModel: VocalFoxViewModel) {
                     ) {
                         Text(
                             text = strings.profileSettingsTitle,
-                            style = VocalFoxType.SectionTitle,
+                            style = VocalFoxType.PageTitle,
                             color = colors.primaryText
                         )
                         Box(
@@ -257,20 +262,23 @@ private fun VocalFoxRootApp(viewModel: VocalFoxViewModel) {
                                 ?.targetSentence
                                 .orEmpty()
                             viewModel.ttsManager.speak(sampleText, langCode, preset, 1.0f)
-                        }
+                        },
+                        selectedTargetLangCode = currentPack.languageCode,
+                        onSelectTargetLang = viewModel::selectLanguage
                     )
                 }
             }
         }
 
-        // PAGE 3 OF PDF: Popover Quick-Action Menu above the Floating "+" Button
+        // Popover Quick-Action Menu above the Floating "+" Button
         AnimatedVisibility(
             visible = showQuickPopover,
             enter = fadeIn(),
             exit = fadeOut(),
             modifier = Modifier
                 .align(Alignment.BottomCenter)
-                .padding(bottom = 96.dp, start = 28.dp, end = 28.dp)
+                .navigationBarsPadding()
+                .padding(bottom = 90.dp, start = 24.dp, end = 24.dp)
         ) {
             val units = buildGuidedUnitsForPack(currentPack, selectedCefr, systemLang)
             Column(
@@ -286,7 +294,7 @@ private fun VocalFoxRootApp(viewModel: VocalFoxViewModel) {
                 PopoverActionRow(
                     icon = Icons.Outlined.PlayArrow,
                     title = strings.startLessonPop,
-                    badge = "+4",
+                    badge = "Unità 1",
                     isHighlighted = true,
                     onClick = {
                         showQuickPopover = false
@@ -296,47 +304,48 @@ private fun VocalFoxRootApp(viewModel: VocalFoxViewModel) {
                 PopoverActionRow(
                     icon = Icons.Outlined.Bolt,
                     title = strings.quickQuizPop,
-                    badge = "+10",
+                    badge = "Random",
                     isHighlighted = false,
                     onClick = {
                         showQuickPopover = false
-                        activeGuidedUnit = units.lastOrNull()
+                        activeGuidedUnit = units.randomOrNull()
+                    }
+                )
+                PopoverActionRow(
+                    icon = Icons.Outlined.Forum,
+                    title = "Conversazione Live AI (Gemini)",
+                    badge = "AI",
+                    isHighlighted = false,
+                    onClick = {
+                        showQuickPopover = false
+                        activeTab = MainTab.LIVE_AI
                     }
                 )
                 PopoverActionRow(
                     icon = Icons.Outlined.GraphicEq,
                     title = strings.speechLabPop,
-                    badge = "+3",
+                    badge = "Voce",
                     isHighlighted = false,
                     onClick = {
                         showQuickPopover = false
                         activeTab = MainTab.SPEECH_LAB
                     }
                 )
-                PopoverActionRow(
-                    icon = Icons.Outlined.Refresh,
-                    title = strings.reviewMistakesPop,
-                    badge = "+2",
-                    isHighlighted = false,
-                    onClick = {
-                        showQuickPopover = false
-                        activeTab = MainTab.EXPLORE
-                    }
-                )
             }
         }
 
-        // PAGE 3 OF PDF: Floating 3-Item Pill Bottom Navigation Bar
+        // Floating Pill Bottom Navigation Bar (Oggi, +, Esplora, Live AI)
         Row(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
-                .padding(bottom = 20.dp)
+                .navigationBarsPadding()
+                .padding(bottom = 14.dp)
                 .shadow(12.dp, RoundedCornerShape(36.dp))
                 .clip(RoundedCornerShape(36.dp))
                 .background(colors.card)
                 .border(1.dp, colors.hairline, RoundedCornerShape(36.dp))
-                .padding(horizontal = 20.dp, vertical = 10.dp),
-            horizontalArrangement = Arrangement.spacedBy(28.dp),
+                .padding(horizontal = 16.dp, vertical = 8.dp),
+            horizontalArrangement = Arrangement.spacedBy(16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             FloatingNavIcon(
@@ -349,10 +358,9 @@ private fun VocalFoxRootApp(viewModel: VocalFoxViewModel) {
                 }
             )
 
-            // Center Primary Action Circle ("+" / Quick Session Popover)
             Box(
                 modifier = Modifier
-                    .size(52.dp)
+                    .size(48.dp)
                     .clip(CircleShape)
                     .background(colors.accent)
                     .clickable { showQuickPopover = !showQuickPopover },
@@ -362,17 +370,27 @@ private fun VocalFoxRootApp(viewModel: VocalFoxViewModel) {
                     imageVector = if (showQuickPopover) Icons.Outlined.Close else Icons.Outlined.Add,
                     contentDescription = null,
                     tint = colors.onAccent,
-                    modifier = Modifier.size(26.dp)
+                    modifier = Modifier.size(24.dp)
                 )
             }
 
             FloatingNavIcon(
                 icon = Icons.Outlined.Explore,
                 label = strings.navExplore,
-                selected = activeTab == MainTab.EXPLORE || activeTab == MainTab.SPEECH_LAB,
+                selected = activeTab == MainTab.EXPLORE,
                 onClick = {
                     showQuickPopover = false
                     activeTab = MainTab.EXPLORE
+                }
+            )
+
+            FloatingNavIcon(
+                icon = Icons.Outlined.Forum,
+                label = "Live AI",
+                selected = activeTab == MainTab.LIVE_AI,
+                onClick = {
+                    showQuickPopover = false
+                    activeTab = MainTab.LIVE_AI
                 }
             )
         }
@@ -436,13 +454,13 @@ private fun FloatingNavIcon(
             .clickable(onClick = onClick)
             .padding(horizontal = 8.dp, vertical = 6.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(6.dp)
+        horizontalArrangement = Arrangement.spacedBy(5.dp)
     ) {
         Icon(
             imageVector = icon,
             contentDescription = label,
             tint = if (selected) colors.accent else colors.mutedText,
-            modifier = Modifier.size(22.dp)
+            modifier = Modifier.size(20.dp)
         )
         Text(
             text = label,
