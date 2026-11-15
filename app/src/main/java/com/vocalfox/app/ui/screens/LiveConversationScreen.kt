@@ -18,9 +18,11 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
@@ -28,6 +30,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.AutoAwesome
 import androidx.compose.material.icons.outlined.Key
 import androidx.compose.material.icons.outlined.Mic
 import androidx.compose.material.icons.outlined.Send
@@ -49,6 +52,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import com.vocalfox.app.audio.GeminiHandoffHelper
 import com.vocalfox.app.audio.GeminiLiveTutorClient
 import com.vocalfox.app.audio.TutorChatMessage
 import com.vocalfox.app.domain.model.CefrLevel
@@ -76,7 +80,7 @@ fun LiveConversationScreen(
     val isIt = systemLang == SystemLang.IT
 
     var apiKey by remember { mutableStateOf(prefs.getString("gemini_api_key", "").orEmpty()) }
-    var showInlineKeyEditor by remember { mutableStateOf(apiKey.isBlank()) }
+    var showInlineKeyEditor by remember { mutableStateOf(false) }
 
     val scenarios = remember(isIt) {
         if (isIt) {
@@ -108,15 +112,15 @@ fun LiveConversationScreen(
             if (currentPack.languageCode == "de") {
                 TutorChatMessage(
                     isUser = false,
-                    text = "Hallo! Ich bin dein VocalFox Tutor (${selectedCefr.name}). Wollen wir über '$selectedScenario' auf Deutsch sprechen?",
-                    translation = if (isIt) "Ciao! Sono il tuo tutor VocalFox (${selectedCefr.name}). Parliamo di '$selectedScenario' in tedesco?" else "Hello! I am your VocalFox tutor. Shall we speak German?",
+                    text = "Hallo! Ich bin dein Vocalfox Tutor (${selectedCefr.name}). Wollen wir über '$selectedScenario' auf Deutsch sprechen?",
+                    translation = if (isIt) "Ciao! Sono il tuo tutor Vocalfox (${selectedCefr.name}). Parliamo di '$selectedScenario' in tedesco?" else "Hello! I am your Vocalfox tutor. Shall we speak German?",
                     grammarCorrection = ""
                 )
             } else {
                 TutorChatMessage(
                     isUser = false,
-                    text = "¡Hola! Soy tu tutor VocalFox (${selectedCefr.name}). ¿Hablamos sobre '$selectedScenario' en español?",
-                    translation = if (isIt) "Ciao! Sono il tuo tutor VocalFox (${selectedCefr.name}). Parliamo di '$selectedScenario' in spagnolo?" else "Hello! I am your VocalFox tutor. Shall we speak Spanish?",
+                    text = "¡Hola! Soy tu tutor Vocalfox (${selectedCefr.name}). ¿Hablamos sobre '$selectedScenario' en español?",
+                    translation = if (isIt) "Ciao! Sono il tuo tutor Vocalfox (${selectedCefr.name}). Parliamo di '$selectedScenario' in spagnolo?" else "Hello! I am your Vocalfox tutor. Shall we speak Spanish?",
                     grammarCorrection = ""
                 )
             }
@@ -128,7 +132,7 @@ fun LiveConversationScreen(
         if (trimmed.isBlank() || isLoading) return
         if (apiKey.isBlank()) {
             showInlineKeyEditor = true
-            errorMessage = if (isIt) "Inserisci prima la tua API Key gratuita di Google Gemini qui sopra." else "Please enter your Google Gemini API key above first."
+            errorMessage = if (isIt) "Inserisci una API Key oppure tocca 'Parla su Gemini' in alto per usare l'app Gemini gratis." else "Enter an API Key or tap 'Open Gemini' above to use the official Gemini app."
             return
         }
 
@@ -175,10 +179,12 @@ fun LiveConversationScreen(
             .fillMaxSize()
             .background(colors.background)
             .statusBarsPadding()
+            .imePadding()
             .padding(horizontal = 20.dp)
     ) {
         Spacer(modifier = Modifier.height(10.dp))
 
+        // Top Header + Pulsante diretto App Google Gemini + Pulsante API Key
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
@@ -186,26 +192,63 @@ fun LiveConversationScreen(
         ) {
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = "Live AI Tutor · ${currentPack.languageName.get(systemLang)} (${selectedCefr.name})",
+                    text = "Live AI · ${currentPack.languageName.get(systemLang)} (${selectedCefr.name})",
                     style = VocalFoxType.PageTitle,
                     color = colors.primaryText
                 )
                 Text(
-                    text = if (isIt) "Parla o scrivi con Gemini Live e ricevi correzioni istantanee" else "Speak or type with Gemini Live and get instant feedback",
+                    text = if (isIt) "Chatta qui o apri Gemini Live vocale" else "Chat here or open Gemini Live voice",
                     style = VocalFoxType.SecondaryCaption,
                     color = colors.secondaryText
                 )
             }
-            Box(
-                modifier = Modifier
-                    .size(42.dp)
-                    .clip(CircleShape)
-                    .background(colors.card)
-                    .border(1.dp, if (apiKey.isBlank()) colors.accent else colors.hairline, CircleShape)
-                    .clickable { showInlineKeyEditor = !showInlineKeyEditor },
-                contentAlignment = Alignment.Center
+
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                Icon(Icons.Outlined.Key, contentDescription = "API Key", tint = colors.accent, modifier = Modifier.size(20.dp))
+                // Pulsante Diretto App Google Gemini (Zero API Key richiesta!)
+                Row(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(14.dp))
+                        .background(colors.accent)
+                        .clickable {
+                            GeminiHandoffHelper.launchGeminiAppWithPrompt(
+                                context = context,
+                                targetLanguageCode = currentPack.languageCode,
+                                cefrLevel = selectedCefr,
+                                systemLang = systemLang,
+                                topic = selectedScenario
+                            )
+                        }
+                        .padding(horizontal = 12.dp, vertical = 9.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Outlined.AutoAwesome,
+                        contentDescription = null,
+                        tint = colors.onAccent,
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Text(
+                        text = if (isIt) "Parla su Gemini" else "Open Gemini",
+                        style = VocalFoxType.BodyMedium,
+                        color = colors.onAccent
+                    )
+                }
+
+                Box(
+                    modifier = Modifier
+                        .size(40.dp)
+                        .clip(CircleShape)
+                        .background(colors.card)
+                        .border(1.dp, if (showInlineKeyEditor) colors.accent else colors.hairline, CircleShape)
+                        .clickable { showInlineKeyEditor = !showInlineKeyEditor },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(Icons.Outlined.Key, contentDescription = "API Key", tint = colors.secondaryText, modifier = Modifier.size(18.dp))
+                }
             }
         }
 
@@ -222,7 +265,7 @@ fun LiveConversationScreen(
                 verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
                 Text(
-                    text = if (isIt) "Chiave API Google Gemini (AI Studio)" else "Google Gemini API Key (AI Studio)",
+                    text = if (isIt) "Chiave API Google Gemini (Opzionale per chat interna)" else "Google Gemini API Key (Optional for in-app chat)",
                     style = VocalFoxType.BodyMedium,
                     color = colors.primaryText
                 )
@@ -431,7 +474,7 @@ fun LiveConversationScreen(
                             modifier = Modifier.size(22.dp)
                         )
                         Text(
-                            text = if (isIt) "VocalFox sta rispondendo..." else "VocalFox is replying...",
+                            text = if (isIt) "Vocalfox sta rispondendo..." else "Vocalfox is replying...",
                             style = VocalFoxType.SecondaryCaption,
                             color = colors.secondaryText
                         )
@@ -439,13 +482,14 @@ fun LiveConversationScreen(
                 }
             }
 
-            item { Spacer(modifier = Modifier.height(8.dp)) }
+            item { Spacer(modifier = Modifier.height(6.dp)) }
         }
 
+        // FIX 1: Barra di input posizionata subito sopra la bottomBar dello Scaffold (senza i 104.dp di vuoto!)
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(top = 8.dp, bottom = 104.dp),
+                .padding(top = 8.dp, bottom = 10.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -482,7 +526,7 @@ fun LiveConversationScreen(
             ) {
                 if (userInput.isEmpty()) {
                     Text(
-                        text = if (currentPack.languageCode == "de") "Scrivi o parla in tedesco..." else "Scrivi o parla in spagnolo...",
+                        text = if (currentPack.languageCode == "de") "Scrivi un messaggio in tedesco..." else "Scrivi un messaggio in spagnolo...",
                         style = VocalFoxType.Body,
                         color = colors.mutedText
                     )

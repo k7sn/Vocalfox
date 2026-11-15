@@ -23,6 +23,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -34,6 +35,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.ArrowForward
+import androidx.compose.material.icons.outlined.AutoAwesome
 import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.Mic
@@ -57,6 +59,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
+import com.vocalfox.app.audio.GeminiHandoffHelper
 import com.vocalfox.app.audio.PhonemeAccuracyStatus
 import com.vocalfox.app.audio.PronunciationResult
 import com.vocalfox.app.domain.model.CefrLevel
@@ -170,7 +173,6 @@ fun OnboardingScreen(
                 }
             }
 
-            // 1. UI Language
             Text(
                 text = strings.chooseUiLanguageLabel,
                 style = VocalFoxType.BodyMedium,
@@ -201,7 +203,6 @@ fun OnboardingScreen(
                 }
             }
 
-            // 2. Target Language (Spanish & German)
             Text(
                 text = strings.chooseTargetLanguageLabel,
                 style = VocalFoxType.BodyMedium,
@@ -262,7 +263,6 @@ fun OnboardingScreen(
                 }
             }
 
-            // Option A: Start from Scratch (A1)
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -295,7 +295,6 @@ fun OnboardingScreen(
                 )
             }
 
-            // Option B: Quick Placement Test
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -411,15 +410,6 @@ fun OnboardingScreen(
     }
 }
 
-/**
- * Full-Screen 5-Step Guided Lesson Session:
- * Step 0: Discovery Cards & Rule
- * Step 1: Multiple-Choice Comprehension (Zero Spoiler)
- * Step 2: Verb / Pronoun / Meaning Match
- * Step 3: Interactive Sentence Builder (Word Bank with Audio)
- * Step 4: Final Pronunciation & Shadowing
- * Step 5: Celebration Summary
- */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun GuidedLessonScreen(
@@ -460,7 +450,6 @@ fun GuidedLessonScreen(
             .navigationBarsPadding()
             .padding(horizontal = 20.dp, vertical = 14.dp)
     ) {
-        // Top Progress Bar + Close Button
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
@@ -787,7 +776,7 @@ fun GuidedLessonScreen(
                     }
                 }
 
-                // STEP 3: Interactive Sentence Builder (Word Bank with Audio on each tile)
+                // STEP 3: FIX 2 — Interactive Sentence Builder with Per-Word Green/Red Outline
                 3 -> {
                     val wrt = bundle.writingExercise
                     val targetSentence = wrt.referenceTargets.firstOrNull().orEmpty()
@@ -804,7 +793,11 @@ fun GuidedLessonScreen(
                     val shuffledBank = remember(wrt.id) { allWords.shuffled() }
                     val selectedWords = remember(wrt.id) { mutableStateListOf<String>() }
                     var checked by remember(wrt.id) { mutableStateOf(false) }
-                    val builtRight = selectedWords.joinToString(" ").equals(allWords.joinToString(" "), ignoreCase = true)
+
+                    val builtRight = selectedWords.size == allWords.size &&
+                        selectedWords.indices.all { idx ->
+                            selectedWords[idx].equals(allWords[idx], ignoreCase = true)
+                        }
 
                     Column(
                         modifier = Modifier
@@ -839,10 +832,11 @@ fun GuidedLessonScreen(
                             )
                         }
 
+                        // Assembled Sentence Area: Green outline for right word in right slot, Red for wrong slot
                         FlowRow(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .height(104.dp)
+                                .heightIn(min = 104.dp)
                                 .clip(RoundedCornerShape(16.dp))
                                 .background(colors.raised)
                                 .border(1.dp, colors.hairline, RoundedCornerShape(16.dp))
@@ -850,14 +844,33 @@ fun GuidedLessonScreen(
                             horizontalArrangement = Arrangement.spacedBy(8.dp),
                             verticalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
-                            selectedWords.forEach { w ->
+                            selectedWords.forEachIndexed { index, w ->
+                                val isWordAtPosCorrect = checked &&
+                                    allWords.getOrNull(index)?.equals(w, ignoreCase = true) == true
+
+                                val tileBorderColor = when {
+                                    !checked -> colors.accent
+                                    isWordAtPosCorrect -> colors.positive
+                                    else -> colors.negative
+                                }
+                                val tileBgColor = when {
+                                    !checked -> colors.card
+                                    isWordAtPosCorrect -> colors.positive.copy(alpha = 0.12f)
+                                    else -> colors.negative.copy(alpha = 0.12f)
+                                }
+                                val tileTextColor = when {
+                                    !checked -> colors.primaryText
+                                    isWordAtPosCorrect -> colors.positive
+                                    else -> colors.negative
+                                }
+
                                 Box(
                                     modifier = Modifier
                                         .clip(RoundedCornerShape(10.dp))
-                                        .background(colors.card)
-                                        .border(1.dp, colors.accent, RoundedCornerShape(10.dp))
+                                        .background(tileBgColor)
+                                        .border(2.dp, tileBorderColor, RoundedCornerShape(10.dp))
                                         .clickable {
-                                            selectedWords.remove(w)
+                                            selectedWords.removeAt(index)
                                             checked = false
                                         }
                                         .padding(horizontal = 12.dp, vertical = 8.dp)
@@ -865,12 +878,13 @@ fun GuidedLessonScreen(
                                     Text(
                                         text = w,
                                         style = VocalFoxType.BodyMedium,
-                                        color = colors.primaryText
+                                        color = tileTextColor
                                     )
                                 }
                             }
                         }
 
+                        // Shuffled Word Bank
                         FlowRow(
                             horizontalArrangement = Arrangement.spacedBy(10.dp),
                             verticalArrangement = Arrangement.spacedBy(10.dp)
@@ -900,9 +914,21 @@ fun GuidedLessonScreen(
 
                         if (checked) {
                             MascotPedagogicalBanner(
-                                state = if (builtRight) MascotState.CELEBRATE else MascotState.THINKING,
-                                title = targetSentence,
-                                subtitle = wrt.jitFeedback.get(systemLang)
+                                state = if (builtRight) MascotState.CELEBRATE else MascotState.STRICT_COACH,
+                                title = if (builtRight) {
+                                    if (isIt) "Frase perfetta!" else "Perfect sentence!"
+                                } else {
+                                    targetSentence
+                                },
+                                subtitle = if (builtRight) {
+                                    wrt.jitFeedback.get(systemLang)
+                                } else {
+                                    if (isIt) {
+                                        "Le parole in verde sono al posto giusto, quelle in rosso vanno spostate. Tocca una parola per correggerla o premi Continua."
+                                    } else {
+                                        "Green words are in the right spot, red ones need adjustment. Tap a word to fix it or press Continue."
+                                    }
+                                }
                             )
                         }
 
@@ -1073,8 +1099,9 @@ fun GuidedLessonScreen(
                     }
                 }
 
-                // STEP 5: Celebratory Completion Screen
+                // STEP 5: Celebratory Completion Screen + Direct Handoff to Google Gemini App
                 else -> {
+                    val langCode = if (bundle.grammarExercise.id.startsWith("de")) "de" else "es"
                     Column(
                         modifier = Modifier.fillMaxSize(),
                         horizontalAlignment = Alignment.CenterHorizontally,
@@ -1082,7 +1109,7 @@ fun GuidedLessonScreen(
                     ) {
                         VocalFoxMascot(
                             state = MascotState.CELEBRATE,
-                            size = 160.dp,
+                            size = 150.dp,
                             tintBackground = VocalFoxPalette.TintSoftGold
                         )
                         Spacer(modifier = Modifier.height(20.dp))
@@ -1097,7 +1124,44 @@ fun GuidedLessonScreen(
                             style = VocalFoxType.Body,
                             color = colors.secondaryText
                         )
-                        Spacer(modifier = Modifier.height(32.dp))
+                        Spacer(modifier = Modifier.height(24.dp))
+
+                        // Pulsante per continuare a praticare l'argomento della lezione nell'app Google Gemini
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(14.dp))
+                                .background(colors.card)
+                                .border(1.5.dp, colors.accent, RoundedCornerShape(14.dp))
+                                .clickable {
+                                    GeminiHandoffHelper.launchGeminiAppWithPrompt(
+                                        context = context,
+                                        targetLanguageCode = langCode,
+                                        cefrLevel = bundle.cefr,
+                                        systemLang = systemLang,
+                                        topic = bundle.title
+                                    )
+                                }
+                                .padding(vertical = 14.dp, horizontal = 16.dp),
+                            horizontalArrangement = Arrangement.Center,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                imageVector = Icons.Outlined.AutoAwesome,
+                                contentDescription = null,
+                                tint = colors.accent,
+                                modifier = Modifier.size(20.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = if (isIt) "Pratica '${bundle.title}' su Gemini Live" else "Practice '${bundle.title}' on Gemini Live",
+                                style = VocalFoxType.BodyMedium,
+                                color = colors.accent
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.height(12.dp))
+
                         PrimaryBottomButton(
                             text = strings.continueButton,
                             onClick = onClose
