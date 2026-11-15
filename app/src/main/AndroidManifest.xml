@@ -2,7 +2,6 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
-    <!-- Permesso Internet usato esclusivamente per la conversazione Live AI opzionale con Google Gemini -->
     <uses-permission android:name="android.permission.INTERNET" />
 
     <queries>
@@ -18,7 +17,7 @@
         android:allowBackup="true"
         android:icon="@mipmap/ic_launcher"
         android:roundIcon="@mipmap/ic_launcher_round"
-        android:label="VocalFox"
+        android:label="Vocalfox"
         android:supportsRtl="true"
         android:theme="@android:style/Theme.Material.NoActionBar">
         <activity

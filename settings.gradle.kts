@@ -14,5 +14,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "VocalFox"
+rootProject.name = "Vocalfox"
 include(":app")

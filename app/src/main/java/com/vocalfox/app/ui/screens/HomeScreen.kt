@@ -27,9 +27,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material.icons.outlined.LocalFireDepartment
-import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material.icons.outlined.PlayArrow
-import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -55,15 +53,6 @@ import com.vocalfox.app.ui.theme.VocalFoxTheme
 import com.vocalfox.app.ui.theme.VocalFoxType
 import com.vocalfox.app.ui.theme.VocalFoxWordmark
 
-/**
- * Redesigned Home Screen:
- * - Uses `VocalFoxWordmark()` (`vocalfox_text.png`) in the top bar
- * - Applies `.statusBarsPadding()` so buttons are never cramped under the status bar
- * - Removes the DE/ES/JA switcher from the top-left (moved into Profile & Settings)
- * - Calculates the REAL consecutive day streak (shows 0 when 0 completed)
- * - Fixes the circular progress ring so sweepAngle == 0f when completedCount == 0
- * - Displays all 50 progressive units per CEFR level with a chapter filter bar (1–10, 11–20, 21–30, 31–40, 41–50)
- */
 @Composable
 fun HomeScreen(
     allPacks: Map<String, LanguagePack>,
@@ -80,12 +69,11 @@ fun HomeScreen(
     val colors = VocalFoxTheme.colors
     val isIt = systemLang == SystemLang.IT
 
-    // Generate all 50 units for the currently selected CEFR level
     val all50Units = remember(currentPack.languageCode, selectedCefr, systemLang) {
         CurriculumGenerator.generate50UnitsForLevel(currentPack, selectedCefr, systemLang)
     }
 
-    var selectedChapterFilter by remember(selectedCefr) { mutableIntStateOf(0) } // 0 = All 50, 1..5 = Chapters 1..5
+    var selectedChapterFilter by remember(selectedCefr) { mutableIntStateOf(0) }
     val displayedUnits = remember(all50Units, selectedChapterFilter) {
         if (selectedChapterFilter == 0) {
             all50Units
@@ -95,7 +83,6 @@ fun HomeScreen(
         }
     }
 
-    // Real completed units & real day streak calculation (0 when no exercises completed!)
     val completedCount = progressList.count { it.bestScore >= 70 }
     val realStreakDays = remember(progressList) {
         calculateConsecutiveDayStreak(progressList)
@@ -116,34 +103,43 @@ fun HomeScreen(
             .padding(horizontal = 20.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        // TOP BAR: VocalFoxWordmark Left + Streak & Profile Avatar Right
+        // TOP BAR: Immagine Vocalfox a sinistra + Badge Lingua e Streak a destra
         item {
-            Spacer(modifier = Modifier.height(6.dp))
+            Spacer(modifier = Modifier.height(8.dp))
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                    VocalFoxWordmark(height = 30.dp)
-                    Text(
-                        text = "${currentPack.languageName.get(systemLang)} · Livello ${selectedCefr.name} (50 Unità)",
-                        style = VocalFoxType.SecondaryCaption,
-                        color = colors.secondaryText
-                    )
-                }
+                VocalFoxWordmark(height = 32.dp)
 
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    // Real Streak Pill
+                    // Badge corso attivo (cliccabile per cambiare lingua nel Profilo)
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(colors.card)
+                            .border(1.dp, colors.hairline, RoundedCornerShape(12.dp))
+                            .clickable(onClick = onOpenProfileSettings)
+                            .padding(horizontal = 12.dp, vertical = 7.dp)
+                    ) {
+                        Text(
+                            text = "${currentPack.languageName.get(systemLang)} · ${selectedCefr.name}",
+                            style = VocalFoxType.BodyMedium,
+                            color = colors.primaryText
+                        )
+                    }
+
+                    // Streak reale
                     Row(
                         modifier = Modifier
-                            .clip(RoundedCornerShape(20.dp))
+                            .clip(RoundedCornerShape(12.dp))
                             .background(colors.card)
-                            .border(1.dp, colors.hairline, RoundedCornerShape(20.dp))
-                            .padding(horizontal = 12.dp, vertical = 8.dp),
+                            .border(1.dp, colors.hairline, RoundedCornerShape(12.dp))
+                            .padding(horizontal = 10.dp, vertical = 7.dp),
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
@@ -159,29 +155,11 @@ fun HomeScreen(
                             color = colors.primaryText
                         )
                     }
-
-                    // Large 46.dp Profile & Language Settings Button
-                    Box(
-                        modifier = Modifier
-                            .size(46.dp)
-                            .clip(CircleShape)
-                            .background(colors.card)
-                            .border(1.5.dp, colors.accent.copy(alpha = 0.5f), CircleShape)
-                            .clickable(onClick = onOpenProfileSettings),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            imageVector = Icons.Outlined.Person,
-                            contentDescription = strings.profileSettingsTitle,
-                            tint = colors.primaryText,
-                            modifier = Modifier.size(22.dp)
-                        )
-                    }
                 }
             }
         }
 
-        // LEVEL SELECTOR PILLS (A1, A2, B1, B2)
+        // SELETTORE LIVELLO PULITO (A1, A2, B1, B2)
         item {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -193,12 +171,12 @@ fun HomeScreen(
                     Column(
                         modifier = Modifier
                             .weight(1f)
-                            .clip(RoundedCornerShape(16.dp))
+                            .clip(RoundedCornerShape(14.dp))
                             .background(if (isSelected) colors.accent else colors.card)
                             .border(
                                 width = 1.dp,
                                 color = if (isSelected) colors.accent else colors.hairline,
-                                shape = RoundedCornerShape(16.dp)
+                                shape = RoundedCornerShape(14.dp)
                             )
                             .clickable { onSelectCefr(level) }
                             .padding(vertical = 10.dp),
@@ -213,7 +191,7 @@ fun HomeScreen(
                         )
                         Text(
                             text = "$doneInLevel/50",
-                            style = VocalFoxType.MetaMono,
+                            style = VocalFoxType.SecondaryCaption,
                             color = if (isSelected) colors.onAccent.copy(alpha = 0.85f) else colors.mutedText,
                             maxLines = 1
                         )
@@ -222,20 +200,20 @@ fun HomeScreen(
             }
         }
 
-        // DAILY GOAL RING CARD (0f sweep when completedToday == 0!)
+        // OBIETTIVO GIORNALIERO COMPATTO
         item {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clip(RoundedCornerShape(20.dp))
+                    .clip(RoundedCornerShape(16.dp))
                     .background(colors.card)
-                    .border(1.dp, colors.hairline, RoundedCornerShape(20.dp))
-                    .padding(18.dp),
-                horizontalArrangement = Arrangement.spacedBy(18.dp),
+                    .border(1.dp, colors.hairline, RoundedCornerShape(16.dp))
+                    .padding(16.dp),
+                horizontalArrangement = Arrangement.spacedBy(16.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Box(
-                    modifier = Modifier.size(80.dp),
+                    modifier = Modifier.size(68.dp),
                     contentAlignment = Alignment.Center
                 ) {
                     val trackCol = colors.raised
@@ -246,7 +224,7 @@ fun HomeScreen(
                             startAngle = 135f,
                             sweepAngle = 270f,
                             useCenter = false,
-                            style = Stroke(width = 18f, cap = StrokeCap.Round)
+                            style = Stroke(width = 16f, cap = StrokeCap.Round)
                         )
                         if (dailyProgressRatio > 0f) {
                             drawArc(
@@ -254,7 +232,7 @@ fun HomeScreen(
                                 startAngle = 135f,
                                 sweepAngle = 270f * dailyProgressRatio,
                                 useCenter = false,
-                                style = Stroke(width = 18f, cap = StrokeCap.Round)
+                                style = Stroke(width = 16f, cap = StrokeCap.Round)
                             )
                         }
                     }
@@ -267,52 +245,26 @@ fun HomeScreen(
 
                 Column(
                     modifier = Modifier.weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(6.dp)
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
                     Text(
                         text = strings.dailyGoalTitle,
                         style = VocalFoxType.SectionTitle,
                         color = colors.primaryText
                     )
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(20.dp)
-                    ) {
-                        Column {
-                            Text(
-                                text = "$realStreakDays",
-                                style = VocalFoxType.CardFigure,
-                                color = colors.accent
-                            )
-                            Text(
-                                text = strings.streakTitle,
-                                style = VocalFoxType.SecondaryCaption,
-                                color = colors.secondaryText,
-                                maxLines = 1
-                            )
-                        }
-                        Column {
-                            Text(
-                                text = "$completedCount",
-                                style = VocalFoxType.CardFigure,
-                                color = colors.primaryText
-                            )
-                            Text(
-                                text = strings.wordsLearnedTitle,
-                                style = VocalFoxType.SecondaryCaption,
-                                color = colors.secondaryText,
-                                maxLines = 1
-                            )
-                        }
-                    }
+                    Text(
+                        text = if (isIt) "$completedCount unità completate in totale" else "$completedCount total units completed",
+                        style = VocalFoxType.SecondaryCaption,
+                        color = colors.secondaryText
+                    )
                 }
             }
         }
 
-        // CHAPTER FILTER PILLS (Tutte 50, Unità 1-10, 11-20, 21-30, 31-40, 41-50)
+        // FILTRO CAPITOLI (Tutte, 1-10, 11-20, 21-30, 31-40, 41-50)
         item {
             val chapterFilters = listOf(
-                0 to (if (isIt) "Tutte (50)" else "All (50)"),
+                0 to (if (isIt) "Tutte" else "All"),
                 1 to "1–10",
                 2 to "11–20",
                 3 to "21–30",
@@ -329,23 +281,24 @@ fun HomeScreen(
                     val active = selectedChapterFilter == chapIdx
                     Box(
                         modifier = Modifier
-                            .clip(RoundedCornerShape(12.dp))
+                            .clip(RoundedCornerShape(10.dp))
                             .background(if (active) colors.primaryText else colors.card)
-                            .border(1.dp, colors.hairline, RoundedCornerShape(12.dp))
+                            .border(1.dp, colors.hairline, RoundedCornerShape(10.dp))
                             .clickable { selectedChapterFilter = chapIdx }
                             .padding(horizontal = 14.dp, vertical = 8.dp)
                     ) {
                         Text(
                             text = if (chapIdx == 0) label else (if (isIt) "Unità $label" else "Units $label"),
-                            style = VocalFoxType.MetaMono,
-                            color = if (active) colors.background else colors.secondaryText
+                            style = VocalFoxType.BodyMedium,
+                            color = if (active) colors.background else colors.secondaryText,
+                            maxLines = 1
                         )
                     }
                 }
             }
         }
 
-        // VERTICAL TIMELINE OF 50 UNITS
+        // LISTA DELLE 50 UNITÀ (Card pulite, zero testo spezzato in verticale!)
         itemsIndexed(displayedUnits, key = { _, u -> u.grammarExercise.id }) { idx, unit ->
             val isCompleted = progressList.any { it.itemKey == unit.grammarExercise.id && it.bestScore >= 70 }
             val isNextActive = idx == 0 || !isCompleted
@@ -356,17 +309,16 @@ fun HomeScreen(
                     .height(IntrinsicSize.Min),
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                // Left Timeline Column
                 Column(
                     horizontalAlignment = Alignment.CenterHorizontally,
                     modifier = Modifier
-                        .width(20.dp)
+                        .width(16.dp)
                         .fillMaxHeight()
                 ) {
-                    Spacer(modifier = Modifier.height(24.dp))
+                    Spacer(modifier = Modifier.height(22.dp))
                     Box(
                         modifier = Modifier
-                            .size(14.dp)
+                            .size(12.dp)
                             .clip(CircleShape)
                             .background(
                                 when {
@@ -377,7 +329,7 @@ fun HomeScreen(
                             )
                             .border(
                                 width = 2.dp,
-                                color = if (isNextActive) colors.accent else colors.mutedText.copy(alpha = 0.4f),
+                                color = if (isNextActive) colors.accent else colors.mutedText.copy(alpha = 0.35f),
                                 shape = CircleShape
                             )
                     )
@@ -392,36 +344,37 @@ fun HomeScreen(
                     }
                 }
 
-                // Right Unit Card with Mascot
+                // Card Unità Pulita
                 Row(
                     modifier = Modifier
                         .weight(1f)
-                        .clip(RoundedCornerShape(20.dp))
+                        .clip(RoundedCornerShape(16.dp))
                         .background(colors.card)
                         .border(
                             width = if (idx == 0) 1.5.dp else 1.dp,
-                            color = if (idx == 0) colors.accent.copy(alpha = 0.45f) else colors.hairline,
-                            shape = RoundedCornerShape(20.dp)
+                            color = if (idx == 0) colors.accent.copy(alpha = 0.5f) else colors.hairline,
+                            shape = RoundedCornerShape(16.dp)
                         )
                         .clickable { onStartGuidedUnit(unit) }
                         .padding(16.dp),
-                    horizontalArrangement = Arrangement.spacedBy(14.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Column(
                         modifier = Modifier.weight(1f),
-                        verticalArrangement = Arrangement.spacedBy(5.dp)
+                        verticalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
                         Text(
-                            text = "${unit.cefr.name} · Unità ${unit.unitIndex + 1} di 50",
-                            style = VocalFoxType.MetaMono,
-                            color = colors.accent
+                            text = if (isIt) "Unità ${unit.unitIndex + 1}" else "Unit ${unit.unitIndex + 1}",
+                            style = VocalFoxType.SecondaryCaption,
+                            color = colors.accent,
+                            maxLines = 1
                         )
                         Text(
                             text = unit.title,
                             style = VocalFoxType.SectionTitle,
                             color = colors.primaryText,
-                            maxLines = 2,
+                            maxLines = 1,
                             overflow = TextOverflow.Ellipsis
                         )
                         Text(
@@ -434,55 +387,40 @@ fun HomeScreen(
 
                         Spacer(modifier = Modifier.height(2.dp))
 
+                        // Bottone orizzontale pulito che non va MAI a capo lettera per lettera
                         Row(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(10.dp))
+                                .background(if (isCompleted) colors.positive.copy(alpha = 0.12f) else colors.accent)
+                                .padding(horizontal = 14.dp, vertical = 7.dp),
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(6.dp)
                         ) {
                             Icon(
-                                imageVector = if (isCompleted) Icons.Outlined.Check else Icons.Outlined.Schedule,
+                                imageVector = if (isCompleted) Icons.Outlined.Check else Icons.Outlined.PlayArrow,
                                 contentDescription = null,
-                                tint = if (isCompleted) colors.positive else colors.mutedText,
-                                modifier = Modifier.size(15.dp)
+                                tint = if (isCompleted) colors.positive else colors.onAccent,
+                                modifier = Modifier.size(16.dp)
                             )
                             Text(
-                                text = "${unit.durationMinutes} min · 5 step",
-                                style = VocalFoxType.MetaMono,
-                                color = colors.mutedText
+                                text = if (isCompleted) (if (isIt) "Completata" else "Completed") else strings.startUnitAction,
+                                style = VocalFoxType.BodyMedium,
+                                color = if (isCompleted) colors.positive else colors.onAccent,
+                                maxLines = 1
                             )
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Row(
-                                modifier = Modifier
-                                    .clip(RoundedCornerShape(10.dp))
-                                    .background(colors.accent.copy(alpha = 0.12f))
-                                    .padding(horizontal = 10.dp, vertical = 4.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(4.dp)
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Outlined.PlayArrow,
-                                    contentDescription = null,
-                                    tint = colors.accent,
-                                    modifier = Modifier.size(14.dp)
-                                )
-                                Text(
-                                    text = strings.startUnitAction,
-                                    style = VocalFoxType.MetaMono,
-                                    color = colors.accent
-                                )
-                            }
                         }
                     }
 
                     VocalFoxMascot(
                         state = unit.mascotPose,
-                        size = 88.dp,
+                        size = 76.dp,
                         tintBackground = unit.tintColor
                     )
                 }
             }
         }
 
-        item { Spacer(modifier = Modifier.height(110.dp)) }
+        item { Spacer(modifier = Modifier.height(24.dp)) }
     }
 }
 

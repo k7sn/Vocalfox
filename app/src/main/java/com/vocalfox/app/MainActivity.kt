@@ -4,14 +4,10 @@ import android.content.Context
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -20,18 +16,14 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Add
-import androidx.compose.material.icons.outlined.Bolt
-import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.Explore
 import androidx.compose.material.icons.outlined.Forum
-import androidx.compose.material.icons.outlined.GraphicEq
 import androidx.compose.material.icons.outlined.Home
-import androidx.compose.material.icons.outlined.PlayArrow
+import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material3.Icon
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -44,7 +36,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
@@ -58,10 +49,8 @@ import com.vocalfox.app.ui.screens.GuidedUnitBundle
 import com.vocalfox.app.ui.screens.HomeScreen
 import com.vocalfox.app.ui.screens.LiveConversationScreen
 import com.vocalfox.app.ui.screens.OnboardingScreen
-import com.vocalfox.app.ui.screens.PronunciationScreen
 import com.vocalfox.app.ui.screens.SettingsVoiceScreen
 import com.vocalfox.app.ui.screens.SplashScreenOverlay
-import com.vocalfox.app.ui.screens.buildGuidedUnitsForPack
 import com.vocalfox.app.ui.theme.VocalFoxTheme
 import com.vocalfox.app.ui.theme.VocalFoxType
 import com.vocalfox.app.ui.viewmodel.VocalFoxViewModel
@@ -86,7 +75,7 @@ class MainActivity : ComponentActivity() {
 }
 
 private enum class MainTab {
-    TODAY, EXPLORE, LIVE_AI, SPEECH_LAB, PROFILE
+    TODAY, EXPLORE, LIVE_AI, PROFILE
 }
 
 @Composable
@@ -101,7 +90,6 @@ private fun VocalFoxRootApp(viewModel: VocalFoxViewModel) {
     val selectedCefr by viewModel.selectedCefr.collectAsState()
     val progressList by viewModel.progressList.collectAsState()
     val voiceConfigs by viewModel.voiceConfigs.collectAsState()
-    val showFurigana by viewModel.showFurigana.collectAsState()
     val isRecording by viewModel.isRecordingAudio.collectAsState()
     val pronunciationResult by viewModel.latestPronunciationResult.collectAsState()
 
@@ -112,12 +100,11 @@ private fun VocalFoxRootApp(viewModel: VocalFoxViewModel) {
         mutableStateOf(prefs.getBoolean("onboarding_done", false))
     }
     var activeTab by rememberSaveable { mutableStateOf(MainTab.TODAY) }
-    var showQuickPopover by remember { mutableStateOf(false) }
     var activeGuidedUnit by remember { mutableStateOf<GuidedUnitBundle?>(null) }
 
     LaunchedEffect(Unit) {
         viewModel.setSystemLanguage(SystemLang.IT)
-        delay(1700L)
+        delay(2200L)
         showSplash = false
     }
 
@@ -162,12 +149,21 @@ private fun VocalFoxRootApp(viewModel: VocalFoxViewModel) {
         return
     }
 
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(colors.background)
-    ) {
-        Column(modifier = Modifier.fillMaxSize()) {
+    Scaffold(
+        containerColor = colors.background,
+        bottomBar = {
+            CleanBottomNavigationBar(
+                activeTab = activeTab,
+                systemLang = systemLang,
+                onSelectTab = { activeTab = it }
+            )
+        }
+    ) { innerPadding ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(innerPadding)
+        ) {
             when (activeTab) {
                 MainTab.TODAY -> HomeScreen(
                     allPacks = viewModel.allPacks,
@@ -197,21 +193,6 @@ private fun VocalFoxRootApp(viewModel: VocalFoxViewModel) {
                     onOpenSettingsForApiKey = { activeTab = MainTab.PROFILE }
                 )
 
-                MainTab.SPEECH_LAB -> PronunciationScreen(
-                    currentPack = currentPack,
-                    selectedCefr = selectedCefr,
-                    activeVoice = viewModel.getActiveVoiceForLanguage(currentPack.languageCode),
-                    systemLang = systemLang,
-                    strings = strings,
-                    showFurigana = showFurigana,
-                    isRecording = isRecording,
-                    pronunciationResult = pronunciationResult,
-                    onSelectCefr = viewModel::selectCefr,
-                    onPlayTts = { text, speed -> viewModel.speakSentence(text, speed) },
-                    onStartRecording = viewModel::startRecordingPronunciation,
-                    onStopAndEvaluate = viewModel::stopAndEvaluatePronunciation
-                )
-
                 MainTab.PROFILE -> Column(
                     modifier = Modifier
                         .fillMaxSize()
@@ -229,7 +210,7 @@ private fun VocalFoxRootApp(viewModel: VocalFoxViewModel) {
                             style = VocalFoxType.PageTitle,
                             color = colors.primaryText
                         )
-                        Box(
+                        Row(
                             modifier = Modifier
                                 .clip(RoundedCornerShape(10.dp))
                                 .background(colors.raised)
@@ -241,7 +222,7 @@ private fun VocalFoxRootApp(viewModel: VocalFoxViewModel) {
                         ) {
                             Text(
                                 text = strings.retakePlacementAction,
-                                style = VocalFoxType.MetaMono,
+                                style = VocalFoxType.SecondaryCaption,
                                 color = colors.accent
                             )
                         }
@@ -269,203 +250,63 @@ private fun VocalFoxRootApp(viewModel: VocalFoxViewModel) {
                 }
             }
         }
-
-        // Popover Quick-Action Menu above the Floating "+" Button
-        AnimatedVisibility(
-            visible = showQuickPopover,
-            enter = fadeIn(),
-            exit = fadeOut(),
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .navigationBarsPadding()
-                .padding(bottom = 90.dp, start = 24.dp, end = 24.dp)
-        ) {
-            val units = buildGuidedUnitsForPack(currentPack, selectedCefr, systemLang)
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .shadow(16.dp, RoundedCornerShape(24.dp))
-                    .clip(RoundedCornerShape(24.dp))
-                    .background(colors.card)
-                    .border(1.dp, colors.hairline, RoundedCornerShape(24.dp))
-                    .padding(12.dp),
-                verticalArrangement = Arrangement.spacedBy(4.dp)
-            ) {
-                PopoverActionRow(
-                    icon = Icons.Outlined.PlayArrow,
-                    title = strings.startLessonPop,
-                    badge = "Unità 1",
-                    isHighlighted = true,
-                    onClick = {
-                        showQuickPopover = false
-                        activeGuidedUnit = units.firstOrNull()
-                    }
-                )
-                PopoverActionRow(
-                    icon = Icons.Outlined.Bolt,
-                    title = strings.quickQuizPop,
-                    badge = "Random",
-                    isHighlighted = false,
-                    onClick = {
-                        showQuickPopover = false
-                        activeGuidedUnit = units.randomOrNull()
-                    }
-                )
-                PopoverActionRow(
-                    icon = Icons.Outlined.Forum,
-                    title = "Conversazione Live AI (Gemini)",
-                    badge = "AI",
-                    isHighlighted = false,
-                    onClick = {
-                        showQuickPopover = false
-                        activeTab = MainTab.LIVE_AI
-                    }
-                )
-                PopoverActionRow(
-                    icon = Icons.Outlined.GraphicEq,
-                    title = strings.speechLabPop,
-                    badge = "Voce",
-                    isHighlighted = false,
-                    onClick = {
-                        showQuickPopover = false
-                        activeTab = MainTab.SPEECH_LAB
-                    }
-                )
-            }
-        }
-
-        // Floating Pill Bottom Navigation Bar (Oggi, +, Esplora, Live AI)
-        Row(
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .navigationBarsPadding()
-                .padding(bottom = 14.dp)
-                .shadow(12.dp, RoundedCornerShape(36.dp))
-                .clip(RoundedCornerShape(36.dp))
-                .background(colors.card)
-                .border(1.dp, colors.hairline, RoundedCornerShape(36.dp))
-                .padding(horizontal = 16.dp, vertical = 8.dp),
-            horizontalArrangement = Arrangement.spacedBy(16.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            FloatingNavIcon(
-                icon = Icons.Outlined.Home,
-                label = strings.navToday,
-                selected = activeTab == MainTab.TODAY,
-                onClick = {
-                    showQuickPopover = false
-                    activeTab = MainTab.TODAY
-                }
-            )
-
-            Box(
-                modifier = Modifier
-                    .size(48.dp)
-                    .clip(CircleShape)
-                    .background(colors.accent)
-                    .clickable { showQuickPopover = !showQuickPopover },
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = if (showQuickPopover) Icons.Outlined.Close else Icons.Outlined.Add,
-                    contentDescription = null,
-                    tint = colors.onAccent,
-                    modifier = Modifier.size(24.dp)
-                )
-            }
-
-            FloatingNavIcon(
-                icon = Icons.Outlined.Explore,
-                label = strings.navExplore,
-                selected = activeTab == MainTab.EXPLORE,
-                onClick = {
-                    showQuickPopover = false
-                    activeTab = MainTab.EXPLORE
-                }
-            )
-
-            FloatingNavIcon(
-                icon = Icons.Outlined.Forum,
-                label = "Live AI",
-                selected = activeTab == MainTab.LIVE_AI,
-                onClick = {
-                    showQuickPopover = false
-                    activeTab = MainTab.LIVE_AI
-                }
-            )
-        }
     }
 }
 
+/**
+ * Barra inferiore pulita, allineata e piatta (stile Duolingo + heydamir-unslop)
+ * Integrata nello Scaffold così non copre MAI il testo delle card sottostanti.
+ */
 @Composable
-private fun PopoverActionRow(
-    icon: ImageVector,
-    title: String,
-    badge: String,
-    isHighlighted: Boolean,
-    onClick: () -> Unit
+private fun CleanBottomNavigationBar(
+    activeTab: MainTab,
+    systemLang: SystemLang,
+    onSelectTab: (MainTab) -> Unit
 ) {
     val colors = VocalFoxTheme.colors
+    val isIt = systemLang == SystemLang.IT
+
+    val tabs = listOf(
+        Triple(MainTab.TODAY, if (isIt) "Percorso" else "Path", Icons.Outlined.Home),
+        Triple(MainTab.EXPLORE, if (isIt) "Accademia" else "Academy", Icons.Outlined.Explore),
+        Triple(MainTab.LIVE_AI, "Live AI", Icons.Outlined.Forum),
+        Triple(MainTab.PROFILE, if (isIt) "Profilo" else "Profile", Icons.Outlined.Person)
+    )
+
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(14.dp))
-            .background(if (isHighlighted) colors.raised else Color.Transparent)
-            .clickable(onClick = onClick)
-            .padding(horizontal = 14.dp, vertical = 12.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
+            .background(colors.card)
+            .border(1.dp, colors.hairline)
+            .navigationBarsPadding()
+            .padding(horizontal = 12.dp, vertical = 8.dp),
+        horizontalArrangement = Arrangement.SpaceEvenly,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = null,
-                tint = colors.accent,
-                modifier = Modifier.size(20.dp)
-            )
-            Text(
-                text = title,
-                style = VocalFoxType.BodyMedium,
-                color = colors.primaryText
-            )
+        tabs.forEach { (tab, label, icon) ->
+            val selected = activeTab == tab
+            Column(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(if (selected) colors.accent.copy(alpha = 0.12f) else Color.Transparent)
+                    .clickable { onSelectTab(tab) }
+                    .padding(horizontal = 16.dp, vertical = 6.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(2.dp)
+            ) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = label,
+                    tint = if (selected) colors.accent else colors.mutedText,
+                    modifier = Modifier.size(22.dp)
+                )
+                Text(
+                    text = label,
+                    style = VocalFoxType.SecondaryCaption,
+                    color = if (selected) colors.accent else colors.mutedText,
+                    maxLines = 1
+                )
+            }
         }
-        Text(
-            text = badge,
-            style = VocalFoxType.MetaMono,
-            color = colors.mutedText
-        )
-    }
-}
-
-@Composable
-private fun FloatingNavIcon(
-    icon: ImageVector,
-    label: String,
-    selected: Boolean,
-    onClick: () -> Unit
-) {
-    val colors = VocalFoxTheme.colors
-    Row(
-        modifier = Modifier
-            .clip(RoundedCornerShape(20.dp))
-            .clickable(onClick = onClick)
-            .padding(horizontal = 8.dp, vertical = 6.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(5.dp)
-    ) {
-        Icon(
-            imageVector = icon,
-            contentDescription = label,
-            tint = if (selected) colors.accent else colors.mutedText,
-            modifier = Modifier.size(20.dp)
-        )
-        Text(
-            text = label,
-            style = VocalFoxType.BodyMedium,
-            color = if (selected) colors.primaryText else colors.mutedText
-        )
     }
 }
