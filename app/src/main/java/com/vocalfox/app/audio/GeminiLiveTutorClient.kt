@@ -19,18 +19,10 @@ data class TutorChatMessage(
     val grammarCorrection: String = ""
 )
 
-/**
- * Client Live AI Ultra-Veloce con Fail-Fast (connectTimeout = 2500ms, readTimeout = 5000ms, 0ms delay),
- * Sticky Session Cache in memoria e catena di fallback a 4 livelli:
- * 1. gemini-3.8-flash
- * 2. gemini-2.5-flash
- * 3. gemini-2.5-flash-lite
- * 4. gemini-4-hydrogen (con risoluzione dinamica dell'eventuale modello "hydrogen" disponibile per la chiave).
- */
 object GeminiLiveTutorClient {
 
     private const val CONNECT_TIMEOUT_MS = 2500
-    private const val READ_TIMEOUT_MS = 5000
+    private const val READ_TIMEOUT_MS = 12000
 
     @Volatile
     private var stickyModel: String? = null
@@ -39,40 +31,36 @@ object GeminiLiveTutorClient {
     private var resolvedHydrogenModel: String = "gemini-4-hydrogen"
 
     @Volatile
-    private var hasCheckedModelsList: Boolean = false
+    private var hasResolvedModelsList: Boolean = false
 
-    /**
-     * Pre-check asincrono silenzioso chiamato all'apertura di LiveConversationScreen
-     * per individuare l'eventuale nome esatto del modello contenente "hydrogen" associato all'API key.
-     */
     suspend fun preCheckHydrogenModelAsync(apiKey: String) = withContext(Dispatchers.IO) {
         val cleanKey = apiKey.trim()
-        if (cleanKey.isBlank() || hasCheckedModelsList) return@withContext
-        hasCheckedModelsList = true
+        if (cleanKey.isBlank() || hasResolvedModelsList) return@withContext
 
         try {
             val endpoint = "https://generativelanguage.googleapis.com/v1beta/models?key=$cleanKey"
             val conn = (URL(endpoint).openConnection() as HttpURLConnection).apply {
                 requestMethod = "GET"
                 connectTimeout = CONNECT_TIMEOUT_MS
-                readTimeout = READ_TIMEOUT_MS
+                readTimeout = 4000
             }
             if (conn.responseCode in 200..299) {
                 val raw = BufferedReader(InputStreamReader(conn.inputStream, Charsets.UTF_8)).use { it.readText() }
                 val root = JSONObject(raw)
-                val modelsArr = root.optJSONArray("models") ?: return@withContext
-                for (i in 0 until modelsArr.length()) {
-                    val mObj = modelsArr.optJSONObject(i) ?: continue
-                    val rawName = mObj.optString("name", "").removePrefix("models/")
-                    if (rawName.contains("hydrogen", ignoreCase = true)) {
-                        resolvedHydrogenModel = rawName
-                        break
+                val modelsArr = root.optJSONArray("models")
+                if (modelsArr != null) {
+                    hasResolvedModelsList = true
+                    for (i in 0 until modelsArr.length()) {
+                        val mObj = modelsArr.optJSONObject(i) ?: continue
+                        val rawName = mObj.optString("name", "").removePrefix("models/")
+                        if (rawName.contains("hydrogen", ignoreCase = true)) {
+                            resolvedHydrogenModel = rawName
+                            break
+                        }
                     }
                 }
             }
-        } catch (_: Throwable) {
-            // Silenzioso: mantiene il fallback predefinito "gemini-4-hydrogen"
-        }
+        } catch (_: Throwable) {}
     }
 
     private fun buildOrderedModelChain(): List<String> {
@@ -196,7 +184,6 @@ object GeminiLiveTutorClient {
                         .trim()
 
                     val parsed = JSONObject(textOut)
-                    // Memorizza questo modello come Sticky Model per i messaggi successivi
                     stickyModel = modelName
 
                     return@withContext Result.success(
@@ -208,7 +195,6 @@ object GeminiLiveTutorClient {
                         )
                     )
                 } else {
-                    // Se lo stickyModel ha fallito (503, 429, 404, 500), resettalo e passa con 0ms di attesa al modello successivo
                     if (stickyModel == modelName) {
                         stickyModel = null
                     }
@@ -220,10 +206,8 @@ object GeminiLiveTutorClient {
                             break
                         }
                     }
-                    // Continua immediatamente al prossimo modello della catena (0ms delay)
                 }
             } catch (_: Throwable) {
-                // SocketTimeoutException / IOException: resetta lo stickyModel e passa subito al modello successivo
                 if (stickyModel == modelName) {
                     stickyModel = null
                 }

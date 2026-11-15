@@ -9,20 +9,55 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.math.PI
 import kotlin.math.exp
 import kotlin.math.sin
 
-/**
- * Sintetizzatore procedurale offline di effetti sonori (SFX) a 44.100 Hz PCM 16-bit.
- * Zero file audio esterni richiesti, latenza minima e inviluppo anti-click.
- */
 object VocalFoxSfxManager {
     private const val SAMPLE_RATE = 44100
     private const val PREFS_NAME = "vocalfox_prefs"
     private const val KEY_SFX_ENABLED = "sfx_enabled"
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+    private val isPlaying = AtomicBoolean(false)
+
+    private val tileTapPcm: ShortArray by lazy {
+        synthesizeChirp(startFreqHz = 520.0, endFreqHz = 690.0, durationMs = 44, amplitude = 0.22)
+    }
+
+    private val chatPopPcm: ShortArray by lazy {
+        synthesizeChirp(startFreqHz = 640.0, endFreqHz = 880.0, durationMs = 52, amplitude = 0.20)
+    }
+
+    private val successPcm: ShortArray by lazy {
+        synthesizeSequence(
+            listOf(
+                NoteSpec(freqHz = 523.25, durationMs = 85, amplitude = 0.26),
+                NoteSpec(freqHz = 783.99, durationMs = 145, amplitude = 0.28)
+            )
+        )
+    }
+
+    private val errorPcm: ShortArray by lazy {
+        synthesizeSequence(
+            listOf(
+                NoteSpec(freqHz = 260.0, durationMs = 90, amplitude = 0.24),
+                NoteSpec(freqHz = 196.0, durationMs = 135, amplitude = 0.24)
+            )
+        )
+    }
+
+    private val unitCompletePcm: ShortArray by lazy {
+        synthesizeSequence(
+            listOf(
+                NoteSpec(freqHz = 523.25, durationMs = 80, amplitude = 0.25),
+                NoteSpec(freqHz = 659.25, durationMs = 80, amplitude = 0.25),
+                NoteSpec(freqHz = 783.99, durationMs = 90, amplitude = 0.26),
+                NoteSpec(freqHz = 1046.50, durationMs = 200, amplitude = 0.28)
+            )
+        )
+    }
 
     fun isSfxEnabled(context: Context): Boolean {
         val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
@@ -37,85 +72,35 @@ object VocalFoxSfxManager {
         }
     }
 
-    /**
-     * Tocco morbido e caldo alla selezione di una tessera parola o opzione.
-     */
     fun playTileTap(context: Context) {
         if (!isSfxEnabled(context)) return
-        scope.launch {
-            val samples = synthesizeChirp(
-                startFreqHz = 520.0,
-                endFreqHz = 690.0,
-                durationMs = 46,
-                amplitude = 0.22
-            )
-            playPcmSamples(samples, 46)
-        }
+        triggerAsync(tileTapPcm, 44, interruptible = true)
     }
 
-    /**
-     * Lieve suono cristallino all'invio/ricezione di un messaggio nella chat Live AI.
-     */
     fun playChatPop(context: Context) {
         if (!isSfxEnabled(context)) return
-        scope.launch {
-            val samples = synthesizeChirp(
-                startFreqHz = 640.0,
-                endFreqHz = 880.0,
-                durationMs = 54,
-                amplitude = 0.20
-            )
-            playPcmSamples(samples, 54)
-        }
+        triggerAsync(chatPopPcm, 52, interruptible = true)
     }
 
-    /**
-     * Accordo ascendente luminoso a 2 note per risposta esatta.
-     */
     fun playSuccess(context: Context) {
         if (!isSfxEnabled(context)) return
-        scope.launch {
-            val samples = synthesizeSequence(
-                notes = listOf(
-                    NoteSpec(freqHz = 523.25, durationMs = 90, amplitude = 0.26), // C5
-                    NoteSpec(freqHz = 783.99, durationMs = 150, amplitude = 0.28) // G5
-                )
-            )
-            playPcmSamples(samples, 240)
-        }
+        triggerAsync(successPcm, 230, interruptible = false)
     }
 
-    /**
-     * Doppio tono morbido grave per risposta errata.
-     */
     fun playError(context: Context) {
         if (!isSfxEnabled(context)) return
-        scope.launch {
-            val samples = synthesizeSequence(
-                notes = listOf(
-                    NoteSpec(freqHz = 260.0, durationMs = 95, amplitude = 0.24),
-                    NoteSpec(freqHz = 196.0, durationMs = 140, amplitude = 0.24)
-                )
-            )
-            playPcmSamples(samples, 235)
-        }
+        triggerAsync(errorPcm, 225, interruptible = false)
     }
 
-    /**
-     * Breve arpeggio celebrativo a 4 note per il completamento dell'unità.
-     */
     fun playUnitComplete(context: Context) {
         if (!isSfxEnabled(context)) return
+        triggerAsync(unitCompletePcm, 450, interruptible = false)
+    }
+
+    private fun triggerAsync(pcm: ShortArray, durationMs: Int, interruptible: Boolean) {
+        if (interruptible && isPlaying.get()) return
         scope.launch {
-            val samples = synthesizeSequence(
-                notes = listOf(
-                    NoteSpec(freqHz = 523.25, durationMs = 85, amplitude = 0.25),  // C5
-                    NoteSpec(freqHz = 659.25, durationMs = 85, amplitude = 0.25),  // E5
-                    NoteSpec(freqHz = 783.99, durationMs = 95, amplitude = 0.26),  // G5
-                    NoteSpec(freqHz = 1046.50, durationMs = 210, amplitude = 0.28) // C6
-                )
-            )
-            playPcmSamples(samples, 475)
+            playPcmSamples(pcm, durationMs)
         }
     }
 
@@ -191,6 +176,7 @@ object VocalFoxSfxManager {
 
     private suspend fun playPcmSamples(pcm16: ShortArray, durationMs: Int) {
         if (pcm16.isEmpty()) return
+        isPlaying.set(true)
         var track: AudioTrack? = null
         try {
             val byteSize = (pcm16.size * 2).coerceAtLeast(
@@ -220,9 +206,10 @@ object VocalFoxSfxManager {
 
             track.write(pcm16, 0, pcm16.size)
             track.play()
-            delay(durationMs.toLong() + 45L)
+            delay(durationMs.toLong() + 35L)
         } catch (_: Throwable) {
         } finally {
+            isPlaying.set(false)
             try {
                 track?.stop()
                 track?.release()

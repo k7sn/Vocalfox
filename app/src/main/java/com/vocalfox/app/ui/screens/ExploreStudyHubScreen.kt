@@ -1,5 +1,6 @@
 package com.vocalfox.app.ui.screens
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -12,6 +13,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
@@ -24,10 +26,14 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.Quiz
+import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material.icons.outlined.SlowMotionVideo
 import androidx.compose.material.icons.outlined.VolumeUp
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -36,7 +42,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import com.vocalfox.app.audio.VocalFoxSfxManager
+import com.vocalfox.app.data.local.MistakeSrsEntity
 import com.vocalfox.app.domain.model.LanguagePack
 import com.vocalfox.app.ui.i18n.SystemLang
 import com.vocalfox.app.ui.i18n.UiStrings
@@ -57,13 +66,16 @@ data class GrammarStudyCard(
     val quizOptions: List<String>
 )
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ExploreStudyHubScreen(
     currentPack: LanguagePack,
     systemLang: SystemLang,
     strings: UiStrings,
+    srsList: List<MistakeSrsEntity> = emptyList(),
     onPlayAudio: (String, Float) -> Unit
 ) {
+    val context = LocalContext.current
     val colors = VocalFoxTheme.colors
     val isItalian = systemLang == SystemLang.IT
 
@@ -71,16 +83,87 @@ fun ExploreStudyHubScreen(
         "VERBS" to (if (isItalian) "Verbi" else "Verbs"),
         "PRONOUNS" to (if (isItalian) "Pronomi" else "Pronouns"),
         "ADJECTIVES" to (if (isItalian) "Aggettivi e Casi" else "Adjectives & Cases"),
-        "PHRASES" to (if (isItalian) "Frasario e Suoni" else "Phrases & Sounds")
+        "PHRASES" to (if (isItalian) "Frasario e Suoni" else "Phrases & Sounds"),
+        "SRS" to (if (isItalian) "Ripasso Smart" else "Smart Review")
     )
 
     var selectedTab by remember { mutableStateOf("VERBS") }
     var activeQuizCard by remember { mutableStateOf<GrammarStudyCard?>(null) }
 
+    BackHandler(enabled = activeQuizCard != null) {
+        activeQuizCard = null
+    }
+
     val allStudyCards = remember(currentPack.languageCode, systemLang) {
         buildStudyCardsForLanguage(currentPack.languageCode, isItalian)
     }
     val filteredCards = allStudyCards.filter { it.category == selectedTab }
+
+    val quiz = activeQuizCard
+    if (quiz != null) {
+        val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+        var pickedAnswer by remember(quiz.title) { mutableStateOf<String?>(null) }
+
+        ModalBottomSheet(
+            onDismissRequest = { activeQuizCard = null },
+            sheetState = sheetState,
+            containerColor = colors.card
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .navigationBarsPadding()
+                    .padding(horizontal = 20.dp, vertical = 12.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Text(
+                    text = quiz.title,
+                    style = VocalFoxType.MetaMono,
+                    color = colors.accent
+                )
+                Text(
+                    text = quiz.quizPrompt,
+                    style = VocalFoxType.SentenceDisplay,
+                    color = colors.primaryText
+                )
+
+                quiz.quizOptions.forEach { opt ->
+                    val isSelected = pickedAnswer == opt
+                    val isCorrect = opt == quiz.quizCorrect
+                    val borderCol = when {
+                        pickedAnswer != null && isCorrect -> colors.positive
+                        isSelected && !isCorrect -> colors.negative
+                        else -> colors.hairline
+                    }
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(if (isSelected) colors.raised else colors.background)
+                            .border(2.dp, borderCol, RoundedCornerShape(12.dp))
+                            .clickable {
+                                pickedAnswer = opt
+                                if (isCorrect) {
+                                    VocalFoxSfxManager.playSuccess(context)
+                                } else {
+                                    VocalFoxSfxManager.playError(context)
+                                }
+                                onPlayAudio(opt, 1.0f)
+                            }
+                            .padding(14.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(opt, style = VocalFoxType.BodyMedium, color = colors.primaryText)
+                        if (pickedAnswer != null && isCorrect) {
+                            Icon(Icons.Outlined.CheckCircle, null, tint = colors.positive, modifier = Modifier.size(20.dp))
+                        }
+                    }
+                }
+                Spacer(modifier = Modifier.height(12.dp))
+            }
+        }
+    }
 
     Column(
         modifier = Modifier
@@ -117,6 +200,7 @@ fun ExploreStudyHubScreen(
                         .background(if (active) colors.accent else colors.card)
                         .border(1.dp, if (active) colors.accent else colors.hairline, RoundedCornerShape(12.dp))
                         .clickable {
+                            VocalFoxSfxManager.playTileTap(context)
                             selectedTab = code
                             activeQuizCard = null
                         }
@@ -134,241 +218,262 @@ fun ExploreStudyHubScreen(
 
         Spacer(modifier = Modifier.height(12.dp))
 
-        val quiz = activeQuizCard
-        if (quiz != null) {
-            var pickedAnswer by remember(quiz.title) { mutableStateOf<String?>(null) }
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(16.dp))
-                    .background(colors.card)
-                    .border(2.dp, colors.accent, RoundedCornerShape(16.dp))
-                    .padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(10.dp)
+        if (selectedTab == "SRS") {
+            LazyColumn(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = quiz.title,
-                        style = VocalFoxType.SectionTitle,
-                        color = colors.accent,
-                        modifier = Modifier.weight(1f)
-                    )
-                    Text(
-                        text = if (isItalian) "Chiudi" else "Close",
-                        style = VocalFoxType.BodyMedium,
-                        color = colors.secondaryText,
-                        modifier = Modifier.clickable { activeQuizCard = null }
-                    )
-                }
-
-                Text(
-                    text = quiz.quizPrompt,
-                    style = VocalFoxType.SentenceDisplay,
-                    color = colors.primaryText
-                )
-
-                quiz.quizOptions.forEach { opt ->
-                    val isSelected = pickedAnswer == opt
-                    val isCorrect = opt == quiz.quizCorrect
-                    val borderCol = when {
-                        pickedAnswer != null && isCorrect -> colors.positive
-                        isSelected && !isCorrect -> colors.negative
-                        else -> colors.hairline
-                    }
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(12.dp))
-                            .background(if (isSelected) colors.raised else colors.background)
-                            .border(1.5.dp, borderCol, RoundedCornerShape(12.dp))
-                            .clickable {
-                                pickedAnswer = opt
-                                onPlayAudio(opt, 1.0f)
-                            }
-                            .padding(14.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(opt, style = VocalFoxType.BodyMedium, color = colors.primaryText)
-                        if (pickedAnswer != null && isCorrect) {
-                            Icon(Icons.Outlined.CheckCircle, null, tint = colors.positive, modifier = Modifier.size(18.dp))
-                        }
-                    }
-                }
-            }
-            Spacer(modifier = Modifier.height(12.dp))
-        }
-
-        LazyColumn(
-            modifier = Modifier.weight(1f),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            items(filteredCards) { card ->
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(16.dp))
-                        .background(colors.card)
-                        .border(1.dp, colors.hairline, RoundedCornerShape(16.dp))
-                        .padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            text = card.title,
-                            style = VocalFoxType.SectionTitle,
-                            color = colors.primaryText,
-                            modifier = Modifier.weight(1f)
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Box(
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(8.dp))
-                                .background(VocalFoxPalette.TintWarmAmber)
-                                .padding(horizontal = 8.dp, vertical = 4.dp)
-                        ) {
-                            Text(
-                                text = card.levelBadge,
-                                style = VocalFoxType.MetaMono,
-                                color = VocalFoxPalette.FoxFurOrangeDark
-                            )
-                        }
-                    }
-
-                    Text(
-                        text = card.whenToUse,
-                        style = VocalFoxType.Body,
-                        color = colors.secondaryText
-                    )
-
-                    // TABELLA IMPAGINATA A LARGHEZZA PIENA (Zero testo verticale!)
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(12.dp))
-                            .background(colors.raised)
-                            .padding(10.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        card.tableRows.forEach { (targetForm, meaning) ->
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .clip(RoundedCornerShape(10.dp))
-                                    .background(colors.card)
-                                    .clickable { onPlayAudio(targetForm.substringBefore("->").trim(), 1.0f) }
-                                    .padding(horizontal = 14.dp, vertical = 10.dp),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Column(
-                                    modifier = Modifier.weight(1f),
-                                    verticalArrangement = Arrangement.spacedBy(2.dp)
-                                ) {
-                                    Text(
-                                        text = targetForm,
-                                        style = VocalFoxType.BodyMedium,
-                                        color = colors.primaryText
-                                    )
-                                    Text(
-                                        text = meaning,
-                                        style = VocalFoxType.SecondaryCaption,
-                                        color = colors.secondaryText
-                                    )
-                                }
-                                Spacer(modifier = Modifier.width(10.dp))
-                                Icon(
-                                    imageVector = Icons.Outlined.VolumeUp,
-                                    contentDescription = null,
-                                    tint = colors.accent,
-                                    modifier = Modifier.size(18.dp)
-                                )
-                            }
-                        }
-                    }
-
-                    // Frase d'esempio con audio normale e lento
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(12.dp))
-                            .background(colors.background)
-                            .border(1.dp, colors.hairline, RoundedCornerShape(12.dp))
-                            .padding(12.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
+                if (srsList.isEmpty()) {
+                    item {
                         Column(
-                            modifier = Modifier.weight(1f),
-                            verticalArrangement = Arrangement.spacedBy(2.dp)
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(16.dp))
+                                .background(colors.card)
+                                .border(1.dp, colors.hairline, RoundedCornerShape(16.dp))
+                                .padding(20.dp),
+                            verticalArrangement = Arrangement.spacedBy(6.dp)
                         ) {
                             Text(
-                                text = card.exampleSentence,
-                                style = VocalFoxType.BodyMedium,
+                                text = if (isItalian) "Nessun elemento da ripassare" else "Nothing due for review yet",
+                                style = VocalFoxType.SectionTitle,
                                 color = colors.primaryText
                             )
                             Text(
-                                text = card.exampleTranslation,
+                                text = if (isItalian) "Completa qualche unità nel Percorso: gli esercizi più difficili appariranno qui automaticamente." else "Complete units in your Path: tricky items will automatically appear here.",
                                 style = VocalFoxType.SecondaryCaption,
                                 color = colors.secondaryText
                             )
                         }
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                            Box(
-                                modifier = Modifier
-                                    .size(36.dp)
-                                    .clip(CircleShape)
-                                    .background(colors.raised)
-                                    .clickable { onPlayAudio(card.exampleSentence, 1.0f) },
-                                contentAlignment = Alignment.Center
+                    }
+                } else {
+                    items(srsList, key = { it.itemKey }) { srsItem ->
+                        var revealed by remember(srsItem.itemKey) { mutableStateOf(false) }
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(16.dp))
+                                .background(colors.card)
+                                .border(1.dp, colors.hairline, RoundedCornerShape(16.dp))
+                                .clickable {
+                                    VocalFoxSfxManager.playTileTap(context)
+                                    revealed = !revealed
+                                    if (revealed) onPlayAudio(srsItem.targetAnswer, 1.0f)
+                                }
+                                .padding(16.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Icon(Icons.Outlined.VolumeUp, null, tint = colors.primaryText, modifier = Modifier.size(18.dp))
+                                Text(
+                                    text = "${srsItem.cefrLevel} · ${if (isItalian) "Intervallo ${srsItem.intervalDays}g" else "Interval ${srsItem.intervalDays}d"}",
+                                    style = VocalFoxType.MetaMono,
+                                    color = colors.accent
+                                )
+                                Icon(Icons.Outlined.Refresh, null, tint = colors.mutedText, modifier = Modifier.size(16.dp))
                             }
-                            Box(
-                                modifier = Modifier
-                                    .size(36.dp)
-                                    .clip(CircleShape)
-                                    .background(colors.raised)
-                                    .clickable { onPlayAudio(card.exampleSentence, 0.75f) },
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Icon(Icons.Outlined.SlowMotionVideo, null, tint = colors.accent, modifier = Modifier.size(18.dp))
+                            Text(
+                                text = srsItem.promptPreview,
+                                style = VocalFoxType.BodyMedium,
+                                color = colors.primaryText
+                            )
+                            if (revealed) {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clip(RoundedCornerShape(10.dp))
+                                        .background(colors.raised)
+                                        .padding(12.dp)
+                                ) {
+                                    Text(
+                                        text = "${srsItem.targetAnswer} — ${srsItem.lastMistakeNote}",
+                                        style = VocalFoxType.SecondaryCaption,
+                                        color = colors.positive
+                                    )
+                                }
+                            } else {
+                                Text(
+                                    text = if (isItalian) "Tocca per mostrare soluzione e ascoltare" else "Tap to reveal answer and listen",
+                                    style = VocalFoxType.SecondaryCaption,
+                                    color = colors.secondaryText
+                                )
                             }
                         }
                     }
-
-                    // Pulsante Test Rapido
-                    Row(
+                }
+                item { Spacer(modifier = Modifier.height(24.dp)) }
+            }
+        } else {
+            LazyColumn(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                items(filteredCards) { card ->
+                    Column(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clip(RoundedCornerShape(10.dp))
-                            .background(colors.accent.copy(alpha = 0.12f))
-                            .clickable { activeQuizCard = card }
-                            .padding(vertical = 10.dp),
-                        horizontalArrangement = Arrangement.Center,
-                        verticalAlignment = Alignment.CenterVertically
+                            .clip(RoundedCornerShape(16.dp))
+                            .background(colors.card)
+                            .border(1.dp, colors.hairline, RoundedCornerShape(16.dp))
+                            .padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
-                        Icon(Icons.Outlined.Quiz, null, tint = colors.accent, modifier = Modifier.size(18.dp))
-                        Spacer(modifier = Modifier.width(8.dp))
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = card.title,
+                                style = VocalFoxType.SectionTitle,
+                                color = colors.primaryText,
+                                modifier = Modifier.weight(1f)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Box(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .background(if (colors.isDark) VocalFoxPalette.TintWarmAmber.copy(alpha = 0.22f) else VocalFoxPalette.TintWarmAmber)
+                                    .padding(horizontal = 8.dp, vertical = 4.dp)
+                            ) {
+                                Text(
+                                    text = card.levelBadge,
+                                    style = VocalFoxType.MetaMono,
+                                    color = colors.accent
+                                )
+                            }
+                        }
+
                         Text(
-                            text = if (isItalian) "Fai un test rapido" else "Take a quick quiz",
-                            style = VocalFoxType.BodyMedium,
-                            color = colors.accent
+                            text = card.whenToUse,
+                            style = VocalFoxType.Body,
+                            color = colors.secondaryText
                         )
+
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(colors.raised)
+                                .padding(10.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            card.tableRows.forEach { (targetForm, meaning) ->
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clip(RoundedCornerShape(10.dp))
+                                        .background(colors.card)
+                                        .clickable { onPlayAudio(targetForm.substringBefore("->").trim(), 1.0f) }
+                                        .padding(horizontal = 14.dp, vertical = 10.dp),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Column(
+                                        modifier = Modifier.weight(1f),
+                                        verticalArrangement = Arrangement.spacedBy(2.dp)
+                                    ) {
+                                        Text(
+                                            text = targetForm,
+                                            style = VocalFoxType.BodyMedium,
+                                            color = colors.primaryText
+                                        )
+                                        Text(
+                                            text = meaning,
+                                            style = VocalFoxType.SecondaryCaption,
+                                            color = colors.secondaryText
+                                        )
+                                    }
+                                    Spacer(modifier = Modifier.width(10.dp))
+                                    Icon(
+                                        imageVector = Icons.Outlined.VolumeUp,
+                                        contentDescription = null,
+                                        tint = colors.accent,
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                }
+                            }
+                        }
+
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(colors.background)
+                                .border(1.dp, colors.hairline, RoundedCornerShape(12.dp))
+                                .padding(12.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column(
+                                modifier = Modifier.weight(1f),
+                                verticalArrangement = Arrangement.spacedBy(2.dp)
+                            ) {
+                                Text(
+                                    text = card.exampleSentence,
+                                    style = VocalFoxType.BodyMedium,
+                                    color = colors.primaryText
+                                )
+                                Text(
+                                    text = card.exampleTranslation,
+                                    style = VocalFoxType.SecondaryCaption,
+                                    color = colors.secondaryText
+                                )
+                            }
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(36.dp)
+                                        .clip(CircleShape)
+                                        .background(colors.raised)
+                                        .clickable { onPlayAudio(card.exampleSentence, 1.0f) },
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(Icons.Outlined.VolumeUp, null, tint = colors.primaryText, modifier = Modifier.size(18.dp))
+                                }
+                                Box(
+                                    modifier = Modifier
+                                        .size(36.dp)
+                                        .clip(CircleShape)
+                                        .background(colors.raised)
+                                        .clickable { onPlayAudio(card.exampleSentence, 0.75f) },
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(Icons.Outlined.SlowMotionVideo, null, tint = colors.accent, modifier = Modifier.size(18.dp))
+                                }
+                            }
+                        }
+
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(10.dp))
+                                .background(colors.accent.copy(alpha = 0.12f))
+                                .clickable {
+                                    VocalFoxSfxManager.playTileTap(context)
+                                    activeQuizCard = card
+                                }
+                                .padding(vertical = 10.dp),
+                            horizontalArrangement = Arrangement.Center,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(Icons.Outlined.Quiz, null, tint = colors.accent, modifier = Modifier.size(18.dp))
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = if (isItalian) "Fai un test rapido" else "Take a quick quiz",
+                                style = VocalFoxType.BodyMedium,
+                                color = colors.accent
+                            )
+                        }
                     }
                 }
-            }
 
-            item { Spacer(modifier = Modifier.height(24.dp)) }
+                item { Spacer(modifier = Modifier.height(24.dp)) }
+            }
         }
     }
 }

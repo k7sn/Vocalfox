@@ -2,11 +2,13 @@ package com.vocalfox.app.ui.viewmodel
 
 import android.app.Application
 import android.content.Context
+import androidx.compose.runtime.mutableStateListOf
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.vocalfox.app.audio.PiperTtsManager
 import com.vocalfox.app.audio.PronunciationEvaluator
 import com.vocalfox.app.audio.PronunciationResult
+import com.vocalfox.app.audio.TutorChatMessage
 import com.vocalfox.app.data.local.MistakeSrsEntity
 import com.vocalfox.app.data.local.UserProgressEntity
 import com.vocalfox.app.data.local.VocalFoxDatabase
@@ -18,9 +20,7 @@ import com.vocalfox.app.domain.model.GrammarSyntaxExercise
 import com.vocalfox.app.domain.model.LanguagePack
 import com.vocalfox.app.domain.model.PronunciationDrill
 import com.vocalfox.app.domain.model.VoicePreset
-import com.vocalfox.app.domain.model.WritingExercise
 import com.vocalfox.app.ui.i18n.SystemLang
-import com.vocalfox.app.ui.theme.MascotState
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -31,14 +31,6 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
-
-data class WritingEvaluationFeedback(
-    val score: Int,
-    val matchedMorphemes: List<String>,
-    val missingMorphemes: List<String>,
-    val mascotState: MascotState,
-    val explanation: String
-)
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class VocalFoxViewModel(application: Application) : AndroidViewModel(application) {
@@ -71,17 +63,14 @@ class VocalFoxViewModel(application: Application) : AndroidViewModel(application
     private val _selectedCefr = MutableStateFlow(initialCefr)
     val selectedCefr: StateFlow<CefrLevel> = _selectedCefr.asStateFlow()
 
-    private val _showFurigana = MutableStateFlow(true)
-    val showFurigana: StateFlow<Boolean> = _showFurigana.asStateFlow()
-
-    private val _showRomaji = MutableStateFlow(true)
-    val showRomaji: StateFlow<Boolean> = _showRomaji.asStateFlow()
-
     private val _isRecordingAudio = MutableStateFlow(false)
     val isRecordingAudio: StateFlow<Boolean> = _isRecordingAudio.asStateFlow()
 
     private val _latestPronunciationResult = MutableStateFlow<PronunciationResult?>(null)
     val latestPronunciationResult: StateFlow<PronunciationResult?> = _latestPronunciationResult.asStateFlow()
+
+    val chatMessages = mutableStateListOf<TutorChatMessage>()
+    private var chatContextSignature: String = ""
 
     private var recordingJob: Job? = null
 
@@ -112,6 +101,29 @@ class VocalFoxViewModel(application: Application) : AndroidViewModel(application
         }
     }
 
+    fun ensureChatInitialized(langCode: String, cefr: CefrLevel, scenario: String, isIt: Boolean) {
+        val sig = "$langCode|${cefr.name}|$scenario|$isIt"
+        if (chatMessages.isEmpty() || chatContextSignature != sig) {
+            chatContextSignature = sig
+            chatMessages.clear()
+            chatMessages.add(
+                if (langCode == "de") {
+                    TutorChatMessage(
+                        isUser = false,
+                        text = "Hallo! Ich bin dein Vocalfox Tutor (${cefr.name}). Wollen wir über '$scenario' auf Deutsch sprechen?",
+                        translation = if (isIt) "Ciao! Sono il tuo tutor Vocalfox (${cefr.name}). Parliamo di '$scenario' in tedesco?" else "Hello! I am your Vocalfox tutor. Shall we speak German?"
+                    )
+                } else {
+                    TutorChatMessage(
+                        isUser = false,
+                        text = "¡Hola! Soy tu tutor Vocalfox (${cefr.name}). ¿Hablamos sobre '$scenario' en español?",
+                        translation = if (isIt) "Ciao! Sono il tuo tutor Vocalfox (${cefr.name}). Parliamo di '$scenario' in spagnolo?" else "Hello! I am your Vocalfox tutor. Shall we speak Spanish?"
+                    )
+                }
+            )
+        }
+    }
+
     fun setSystemLanguage(lang: SystemLang) {
         _systemLang.value = lang
         prefs.edit().putString("system_lang", lang.name).apply()
@@ -132,14 +144,6 @@ class VocalFoxViewModel(application: Application) : AndroidViewModel(application
         _selectedCefr.value = level
         _latestPronunciationResult.value = null
         prefs.edit().putString("selected_cefr", level.name).apply()
-    }
-
-    fun toggleFurigana(enabled: Boolean) {
-        _showFurigana.value = enabled
-    }
-
-    fun toggleRomaji(enabled: Boolean) {
-        _showRomaji.value = enabled
     }
 
     fun getActiveVoiceForLanguage(languageCode: String): VoicePreset {
@@ -181,62 +185,6 @@ class VocalFoxViewModel(application: Application) : AndroidViewModel(application
                 mistakeNote = exercise.explanation.get(_systemLang.value)
             )
         }
-    }
-
-    fun evaluateWritingSubmission(
-        exercise: WritingExercise,
-        userInput: String
-    ): WritingEvaluationFeedback {
-        val normalizedUser = userInput.trim().lowercase()
-        val matched = exercise.requiredMorphemes.filter { morpheme ->
-            normalizedUser.contains(morpheme.lowercase())
-        }
-        val missing = exercise.requiredMorphemes.filter { morpheme ->
-            !normalizedUser.contains(morpheme.lowercase())
-        }
-
-        val exactMatch = exercise.referenceTargets.any {
-            it.trim().lowercase().trimEnd('.', '。') == normalizedUser.trimEnd('.', '。')
-        }
-
-        val ratio = if (exercise.requiredMorphemes.isEmpty()) 1f
-        else matched.size.toFloat() / exercise.requiredMorphemes.size
-
-        val score = when {
-            exactMatch -> 98
-            ratio >= 1.0f && normalizedUser.length >= 8 -> 90
-            ratio >= 0.5f -> (60 + ratio * 25).toInt()
-            normalizedUser.isNotBlank() -> 35
-            else -> 0
-        }
-
-        val mascot = when {
-            score >= 85 -> MascotState.CELEBRATE
-            score >= 60 -> MascotState.THINKING
-            score > 0 -> MascotState.STRICT_COACH
-            else -> MascotState.ENCOURAGE_SAD
-        }
-
-        viewModelScope.launch {
-            repository.recordExerciseOutcome(
-                itemKey = exercise.id,
-                languageCode = _selectedLanguageCode.value,
-                cefrLevel = exercise.cefr,
-                pillar = "WRITING",
-                score = score,
-                promptPreview = exercise.sourcePrompt.get(_systemLang.value),
-                targetAnswer = exercise.referenceTargets.firstOrNull().orEmpty(),
-                mistakeNote = exercise.jitFeedback.get(_systemLang.value)
-            )
-        }
-
-        return WritingEvaluationFeedback(
-            score = score,
-            matchedMorphemes = matched,
-            missingMorphemes = missing,
-            mascotState = mascot,
-            explanation = exercise.jitFeedback.get(_systemLang.value)
-        )
     }
 
     fun startRecordingPronunciation(drill: PronunciationDrill) {

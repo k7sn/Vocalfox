@@ -40,7 +40,6 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -63,10 +62,12 @@ import com.vocalfox.app.ui.theme.VocalFoxMascot
 import com.vocalfox.app.ui.theme.VocalFoxPalette
 import com.vocalfox.app.ui.theme.VocalFoxTheme
 import com.vocalfox.app.ui.theme.VocalFoxType
+import com.vocalfox.app.ui.viewmodel.VocalFoxViewModel
 import kotlinx.coroutines.launch
 
 @Composable
 fun LiveConversationScreen(
+    viewModel: VocalFoxViewModel,
     currentPack: LanguagePack,
     selectedCefr: CefrLevel,
     systemLang: SystemLang,
@@ -79,7 +80,6 @@ fun LiveConversationScreen(
     val scope = rememberCoroutineScope()
     val isIt = systemLang == SystemLang.IT
 
-    // Pre-check asincrono silenzioso all'apertura di Live AI per risolvere eventuale modello Hydrogen
     LaunchedEffect(Unit) {
         val currentKey = prefs.getString("gemini_api_key", "").orEmpty()
         GeminiLiveTutorClient.preCheckHydrogenModelAsync(currentKey)
@@ -110,25 +110,11 @@ fun LiveConversationScreen(
     var isLoading by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
 
-    val messages = remember(currentPack.languageCode, selectedScenario) {
-        mutableStateListOf(
-            if (currentPack.languageCode == "de") {
-                TutorChatMessage(
-                    isUser = false,
-                    text = "Hallo! Ich bin dein Vocalfox Tutor (${selectedCefr.name}). Wollen wir über '$selectedScenario' auf Deutsch sprechen?",
-                    translation = if (isIt) "Ciao! Sono il tuo tutor Vocalfox (${selectedCefr.name}). Parliamo di '$selectedScenario' in tedesco?" else "Hello! I am your Vocalfox tutor. Shall we speak German?",
-                    grammarCorrection = ""
-                )
-            } else {
-                TutorChatMessage(
-                    isUser = false,
-                    text = "¡Hola! Soy tu tutor Vocalfox (${selectedCefr.name}). ¿Hablamos sobre '$selectedScenario' en español?",
-                    translation = if (isIt) "Ciao! Sono il tuo tutor Vocalfox (${selectedCefr.name}). Parliamo di '$selectedScenario' in spagnolo?" else "Hello! I am your Vocalfox tutor. Shall we speak Spanish?",
-                    grammarCorrection = ""
-                )
-            }
-        )
+    LaunchedEffect(currentPack.languageCode, selectedCefr, selectedScenario, isIt) {
+        viewModel.ensureChatInitialized(currentPack.languageCode, selectedCefr, selectedScenario, isIt)
     }
+
+    val messages = viewModel.chatMessages
 
     fun sendUserTurn(textToSend: String) {
         val trimmed = textToSend.trim()
@@ -199,7 +185,6 @@ fun LiveConversationScreen(
     ) {
         Spacer(modifier = Modifier.height(10.dp))
 
-        // Header Pulito: Titolo a sinistra + SOLO Pulsante Circolare 44.dp con icona Sparkle di Gemini a destra
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
@@ -310,13 +295,13 @@ fun LiveConversationScreen(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .clip(RoundedCornerShape(12.dp))
-                                    .background(VocalFoxPalette.TintMintSage)
+                                    .background(if (colors.isDark) VocalFoxPalette.TintMintSage.copy(alpha = 0.22f) else VocalFoxPalette.TintMintSage)
                                     .padding(12.dp)
                             ) {
                                 Text(
                                     text = "Consiglio: ${msg.grammarCorrection}",
                                     style = VocalFoxType.SecondaryCaption,
-                                    color = VocalFoxPalette.FoxDeepInkBrown
+                                    color = if (colors.isDark) colors.primaryText else VocalFoxPalette.FoxDeepInkBrown
                                 )
                             }
                         }
@@ -329,7 +314,7 @@ fun LiveConversationScreen(
                             VocalFoxMascot(
                                 state = MascotState.LOGO_IDLE,
                                 size = 48.dp,
-                                tintBackground = VocalFoxPalette.TintWarmAmber
+                                tintBackground = if (colors.isDark) VocalFoxPalette.TintWarmAmber.copy(alpha = 0.22f) else VocalFoxPalette.TintWarmAmber
                             )
                             Column(
                                 modifier = Modifier

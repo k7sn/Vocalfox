@@ -1,6 +1,7 @@
 package com.vocalfox.app.audio
 
 import android.content.Context
+import android.content.Intent
 import android.media.AudioAttributes
 import android.media.AudioFormat
 import android.media.AudioTrack
@@ -34,6 +35,15 @@ class PiperTtsManager(private val context: Context) {
         } catch (_: Throwable) {
             isAndroidTtsReady = false
         }
+    }
+
+    fun launchInstallTtsData(ctx: Context) {
+        try {
+            val installIntent = Intent(TextToSpeech.Engine.ACTION_INSTALL_TTS_DATA).apply {
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            }
+            ctx.startActivity(installIntent)
+        } catch (_: Throwable) {}
     }
 
     fun getVoiceModelFile(preset: VoicePreset): File {
@@ -130,15 +140,15 @@ class PiperTtsManager(private val context: Context) {
             val tts = androidTts
             if (tts != null && isAndroidTtsReady) {
                 val locale = when (languageCode) {
-                    "es" -> Locale("es", "ES")
                     "de" -> Locale.GERMANY
-                    "ja" -> Locale.JAPAN
-                    else -> Locale.US
+                    else -> Locale("es", "ES")
                 }
                 tts.language = locale
                 val pitch = when {
-                    preset.gender.equals("Male", ignoreCase = true) -> 0.86f
-                    preset.timbre.contains("Warm", ignoreCase = true) -> 1.02f
+                    preset.gender.equals("Maschile", ignoreCase = true) ||
+                        preset.gender.equals("Male", ignoreCase = true) -> 0.86f
+                    preset.timbre.contains("Calda", ignoreCase = true) ||
+                        preset.timbre.contains("Warm", ignoreCase = true) -> 1.02f
                     else -> 1.10f
                 }
                 tts.setPitch(pitch)

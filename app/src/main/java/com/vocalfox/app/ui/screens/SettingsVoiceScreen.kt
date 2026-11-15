@@ -20,6 +20,7 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Check
+import androidx.compose.material.icons.outlined.Download
 import androidx.compose.material.icons.outlined.VolumeUp
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Switch
@@ -58,7 +59,8 @@ fun SettingsVoiceScreen(
     onSelectVoicePreset: (String, VoicePreset) -> Unit,
     onPreviewVoice: (String, VoicePreset) -> Unit,
     selectedTargetLangCode: String = "es",
-    onSelectTargetLang: (String) -> Unit = {}
+    onSelectTargetLang: (String) -> Unit = {},
+    onInstallSystemTts: () -> Unit = {}
 ) {
     val context = LocalContext.current
     val prefs = remember { context.getSharedPreferences("vocalfox_prefs", Context.MODE_PRIVATE) }
@@ -77,7 +79,7 @@ fun SettingsVoiceScreen(
             .padding(horizontal = 20.dp, vertical = 8.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        // Active Language Course Switcher (Spanish / German)
+        // Corso di lingua attivo
         Column(
             modifier = Modifier
                 .fillMaxWidth()
@@ -120,7 +122,7 @@ fun SettingsVoiceScreen(
             }
         }
 
-        // Google Gemini Live AI API Key Configuration
+        // Google Gemini Live AI API Key
         Column(
             modifier = Modifier
                 .fillMaxWidth()
@@ -187,7 +189,7 @@ fun SettingsVoiceScreen(
             }
         }
 
-        // System UI Language Switcher
+        // Lingua dell'app
         Column(
             modifier = Modifier
                 .fillMaxWidth()
@@ -231,7 +233,7 @@ fun SettingsVoiceScreen(
             }
         }
 
-        // Dark Mode Toggle
+        // Tema Scuro
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -267,7 +269,7 @@ fun SettingsVoiceScreen(
             )
         }
 
-        // Procedural Sound Effects (SFX) Toggle
+        // Effetti sonori (SFX)
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -303,7 +305,7 @@ fun SettingsVoiceScreen(
             )
         }
 
-        // Clean Teacher Voice Picker
+        // Selettore Voci + Pacchetti vocali offline Android
         Column(
             modifier = Modifier
                 .fillMaxWidth()
@@ -313,11 +315,36 @@ fun SettingsVoiceScreen(
                 .padding(18.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
-            Text(
-                text = strings.voiceModelsSection,
-                style = VocalFoxType.SectionTitle,
-                color = colors.primaryText
-            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = strings.voiceModelsSection,
+                    style = VocalFoxType.SectionTitle,
+                    color = colors.primaryText
+                )
+                Row(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(colors.raised)
+                        .clickable {
+                            VocalFoxSfxManager.playTileTap(context)
+                            onInstallSystemTts()
+                        }
+                        .padding(horizontal = 10.dp, vertical = 6.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    Icon(Icons.Outlined.Download, null, tint = colors.accent, modifier = Modifier.size(15.dp))
+                    Text(
+                        text = if (isIt) "Dati vocali" else "Voice data",
+                        style = VocalFoxType.MetaMono,
+                        color = colors.accent
+                    )
+                }
+            }
 
             allPacks.values.forEach { pack ->
                 val activeVoiceId = voiceConfigs

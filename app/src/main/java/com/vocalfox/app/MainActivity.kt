@@ -3,6 +3,7 @@ package com.vocalfox.app
 import android.content.Context
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -40,6 +41,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModelProvider
+import com.vocalfox.app.audio.VocalFoxSfxManager
 import com.vocalfox.app.ui.i18n.AppStrings
 import com.vocalfox.app.ui.i18n.SystemLang
 import com.vocalfox.app.ui.screens.ExploreStudyHubScreen
@@ -88,6 +90,7 @@ private fun VocalFoxRootApp(viewModel: VocalFoxViewModel) {
     val currentPack by viewModel.currentPack.collectAsState()
     val selectedCefr by viewModel.selectedCefr.collectAsState()
     val progressList by viewModel.progressList.collectAsState()
+    val srsList by viewModel.srsList.collectAsState()
     val voiceConfigs by viewModel.voiceConfigs.collectAsState()
     val isRecording by viewModel.isRecordingAudio.collectAsState()
     val pronunciationResult by viewModel.latestPronunciationResult.collectAsState()
@@ -102,7 +105,7 @@ private fun VocalFoxRootApp(viewModel: VocalFoxViewModel) {
     var activeGuidedUnit by remember { mutableStateOf<GuidedUnitBundle?>(null) }
 
     LaunchedEffect(Unit) {
-        delay(2200L)
+        delay(2000L)
         showSplash = false
     }
 
@@ -147,13 +150,24 @@ private fun VocalFoxRootApp(viewModel: VocalFoxViewModel) {
         return
     }
 
+    // Gesture "Indietro" coerente: da qualsiasi tab secondaria torna prima a Percorso (TODAY)
+    BackHandler(enabled = activeTab != MainTab.TODAY) {
+        VocalFoxSfxManager.playTileTap(context)
+        activeTab = MainTab.TODAY
+    }
+
     Scaffold(
         containerColor = colors.background,
         bottomBar = {
             CleanBottomNavigationBar(
                 activeTab = activeTab,
                 systemLang = systemLang,
-                onSelectTab = { activeTab = it }
+                onSelectTab = { newTab ->
+                    if (newTab != activeTab) {
+                        VocalFoxSfxManager.playTileTap(context)
+                        activeTab = newTab
+                    }
+                }
             )
         }
     ) { innerPadding ->
@@ -172,18 +186,26 @@ private fun VocalFoxRootApp(viewModel: VocalFoxViewModel) {
                     progressList = progressList,
                     onSelectLanguage = viewModel::selectLanguage,
                     onSelectCefr = viewModel::selectCefr,
-                    onStartGuidedUnit = { unit -> activeGuidedUnit = unit },
-                    onOpenProfileSettings = { activeTab = MainTab.PROFILE }
+                    onStartGuidedUnit = { unit ->
+                        VocalFoxSfxManager.playTileTap(context)
+                        activeGuidedUnit = unit
+                    },
+                    onOpenProfileSettings = {
+                        VocalFoxSfxManager.playTileTap(context)
+                        activeTab = MainTab.PROFILE
+                    }
                 )
 
                 MainTab.EXPLORE -> ExploreStudyHubScreen(
                     currentPack = currentPack,
                     systemLang = systemLang,
                     strings = strings,
+                    srsList = srsList,
                     onPlayAudio = { text, speed -> viewModel.speakSentence(text, speed) }
                 )
 
                 MainTab.LIVE_AI -> LiveConversationScreen(
+                    viewModel = viewModel,
                     currentPack = currentPack,
                     selectedCefr = selectedCefr,
                     systemLang = systemLang,
@@ -213,6 +235,7 @@ private fun VocalFoxRootApp(viewModel: VocalFoxViewModel) {
                                 .clip(RoundedCornerShape(10.dp))
                                 .background(colors.raised)
                                 .clickable {
+                                    VocalFoxSfxManager.playTileTap(context)
                                     prefs.edit().putBoolean("onboarding_done", false).apply()
                                     hasCompletedOnboarding = false
                                 }
@@ -243,7 +266,8 @@ private fun VocalFoxRootApp(viewModel: VocalFoxViewModel) {
                             viewModel.ttsManager.speak(sampleText, langCode, preset, 1.0f)
                         },
                         selectedTargetLangCode = currentPack.languageCode,
-                        onSelectTargetLang = viewModel::selectLanguage
+                        onSelectTargetLang = viewModel::selectLanguage,
+                        onInstallSystemTts = { viewModel.ttsManager.launchInstallTtsData(context) }
                     )
                 }
             }

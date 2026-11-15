@@ -1,5 +1,6 @@
 package com.vocalfox.app.ui.screens
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -40,8 +41,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.vocalfox.app.audio.VocalFoxSfxManager
 import com.vocalfox.app.data.local.UserProgressEntity
 import com.vocalfox.app.data.repository.CurriculumGenerator
 import com.vocalfox.app.domain.model.CefrLevel
@@ -69,6 +72,7 @@ fun HomeScreen(
     onStartGuidedUnit: (GuidedUnitBundle) -> Unit,
     onOpenProfileSettings: () -> Unit
 ) {
+    val context = LocalContext.current
     val colors = VocalFoxTheme.colors
     val isIt = systemLang == SystemLang.IT
 
@@ -77,6 +81,12 @@ fun HomeScreen(
     }
 
     var selectedChapterFilter by remember(selectedCefr) { mutableIntStateOf(0) }
+
+    BackHandler(enabled = selectedChapterFilter != 0) {
+        VocalFoxSfxManager.playTileTap(context)
+        selectedChapterFilter = 0
+    }
+
     val displayedUnits = remember(all50Units, selectedChapterFilter) {
         if (selectedChapterFilter == 0) {
             all50Units
@@ -182,7 +192,10 @@ fun HomeScreen(
                                 color = if (isSelected) colors.accent else colors.hairline,
                                 shape = RoundedCornerShape(14.dp)
                             )
-                            .clickable { onSelectCefr(level) }
+                            .clickable {
+                                VocalFoxSfxManager.playTileTap(context)
+                                onSelectCefr(level)
+                            }
                             .padding(vertical = 10.dp),
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.spacedBy(2.dp)
@@ -286,7 +299,10 @@ fun HomeScreen(
                             .clip(RoundedCornerShape(10.dp))
                             .background(if (active) colors.primaryText else colors.card)
                             .border(1.dp, colors.hairline, RoundedCornerShape(10.dp))
-                            .clickable { selectedChapterFilter = chapIdx }
+                            .clickable {
+                                VocalFoxSfxManager.playTileTap(context)
+                                selectedChapterFilter = chapIdx
+                            }
                             .padding(horizontal = 14.dp, vertical = 8.dp)
                     ) {
                         Text(
@@ -303,6 +319,7 @@ fun HomeScreen(
         itemsIndexed(displayedUnits, key = { _, u -> u.grammarExercise.id }) { idx, unit ->
             val isCompleted = progressList.any { it.itemKey == unit.grammarExercise.id && it.bestScore >= 70 }
             val isNextActive = idx == 0 || !isCompleted
+            val effectiveTint = if (colors.isDark) unit.tintColor.copy(alpha = 0.22f) else unit.tintColor
 
             Row(
                 modifier = Modifier
@@ -413,7 +430,7 @@ fun HomeScreen(
                     VocalFoxMascot(
                         state = unit.mascotPose,
                         size = 76.dp,
-                        tintBackground = unit.tintColor
+                        tintBackground = effectiveTint
                     )
                 }
             }
