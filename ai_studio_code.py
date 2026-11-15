@@ -1,18 +1,254 @@
 #!/usr/bin/env python3
 """
 patch_vocalfox.py
-Applica i 5 aggiornamenti mirati a Vocalfox:
-1. Fix HTTP 404 in GeminiLiveTutorClient.kt: aggiorna a models/gemini-3.8-flash con fallback a models/gemini-2.5-flash.
-2. Persistenza immediata in SharedPreferences di lingua, livello CEFR e lingua UI in VocalFoxViewModel.kt + calcolo streak con java.time.LocalDate.
-3. Splash Screen con sfondo Nero Puro (#000000) in modo che l'animazione WebP della volpe si fonda perfettamente + logotipo grafico Vocalfox sotto.
-4. Header pulito in LiveConversationScreen.kt: solo pulsante circolare 44.dp con icona sparkle per Gemini Live; rimossa l'icona chiave dall'header (gestita solo in Profilo).
-5. Nuova Schermata di Benvenuto al primo avvio (stile Duolingo reference) con welcome_kit.png, logotipo grafico Vocalfox, sottotitolo e i due pulsanti a tutta larghezza.
+Applica i 2 aggiornamenti mirati a Vocalfox:
+1. Chat Live AI Ultra-Veloce con Fail-Fast (connectTimeout=2500ms, readTimeout=5000ms, 0ms delay),
+   Sticky Model in memoria e catena di fallback:
+   gemini-3.8-flash -> gemini-2.5-flash -> gemini-2.5-flash-lite -> gemini-4-hydrogen
+   (con pre-check silenzioso dei modelli disponibili per risolvere dinamicamente 'hydrogen' e messaggi di errore amichevoli senza JSON grezzo).
+2. Sistema di Effetti Sonori (SFX) Procedurali Offline (VocalFoxSfxManager.kt) a 44.1kHz PCM con:
+   playTileTap(), playSuccess(), playError(), playUnitComplete(), playChatPop()
+   collegato a lezioni, chat Live AI e interruttore in Profilo (SettingsVoiceScreen.kt).
 """
 
-import shutil
 from pathlib import Path
 
 FILES: dict[str, str] = {
+    "app/src/main/java/com/vocalfox/app/audio/VocalFoxSfxManager.kt": """\
+package com.vocalfox.app.audio
+
+import android.content.Context
+import android.media.AudioAttributes
+import android.media.AudioFormat
+import android.media.AudioTrack
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import kotlin.math.PI
+import kotlin.math.exp
+import kotlin.math.sin
+
+/**
+ * Sintetizzatore procedurale offline di effetti sonori (SFX) a 44.100 Hz PCM 16-bit.
+ * Zero file audio esterni richiesti, latenza minima e inviluppo anti-click.
+ */
+object VocalFoxSfxManager {
+    private const val SAMPLE_RATE = 44100
+    private const val PREFS_NAME = "vocalfox_prefs"
+    private const val KEY_SFX_ENABLED = "sfx_enabled"
+
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+
+    fun isSfxEnabled(context: Context): Boolean {
+        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        return prefs.getBoolean(KEY_SFX_ENABLED, true)
+    }
+
+    fun setSfxEnabled(context: Context, enabled: Boolean) {
+        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        prefs.edit().putBoolean(KEY_SFX_ENABLED, enabled).apply()
+        if (enabled) {
+            playSuccess(context)
+        }
+    }
+
+    /**
+     * Tocco morbido e caldo alla selezione di una tessera parola o opzione.
+     */
+    fun playTileTap(context: Context) {
+        if (!isSfxEnabled(context)) return
+        scope.launch {
+            val samples = synthesizeChirp(
+                startFreqHz = 520.0,
+                endFreqHz = 690.0,
+                durationMs = 46,
+                amplitude = 0.22
+            )
+            playPcmSamples(samples, 46)
+        }
+    }
+
+    /**
+     * Lieve suono cristallino all'invio/ricezione di un messaggio nella chat Live AI.
+     */
+    fun playChatPop(context: Context) {
+        if (!isSfxEnabled(context)) return
+        scope.launch {
+            val samples = synthesizeChirp(
+                startFreqHz = 640.0,
+                endFreqHz = 880.0,
+                durationMs = 54,
+                amplitude = 0.20
+            )
+            playPcmSamples(samples, 54)
+        }
+    }
+
+    /**
+     * Accordo ascendente luminoso a 2 note per risposta esatta.
+     */
+    fun playSuccess(context: Context) {
+        if (!isSfxEnabled(context)) return
+        scope.launch {
+            val samples = synthesizeSequence(
+                notes = listOf(
+                    NoteSpec(freqHz = 523.25, durationMs = 90, amplitude = 0.26), // C5
+                    NoteSpec(freqHz = 783.99, durationMs = 150, amplitude = 0.28) // G5
+                )
+            )
+            playPcmSamples(samples, 240)
+        }
+    }
+
+    /**
+     * Doppio tono morbido grave per risposta errata.
+     */
+    fun playError(context: Context) {
+        if (!isSfxEnabled(context)) return
+        scope.launch {
+            val samples = synthesizeSequence(
+                notes = listOf(
+                    NoteSpec(freqHz = 260.0, durationMs = 95, amplitude = 0.24),
+                    NoteSpec(freqHz = 196.0, durationMs = 140, amplitude = 0.24)
+                )
+            )
+            playPcmSamples(samples, 235)
+        }
+    }
+
+    /**
+     * Breve arpeggio celebrativo a 4 note per il completamento dell'unità.
+     */
+    fun playUnitComplete(context: Context) {
+        if (!isSfxEnabled(context)) return
+        scope.launch {
+            val samples = synthesizeSequence(
+                notes = listOf(
+                    NoteSpec(freqHz = 523.25, durationMs = 85, amplitude = 0.25),  // C5
+                    NoteSpec(freqHz = 659.25, durationMs = 85, amplitude = 0.25),  // E5
+                    NoteSpec(freqHz = 783.99, durationMs = 95, amplitude = 0.26),  // G5
+                    NoteSpec(freqHz = 1046.50, durationMs = 210, amplitude = 0.28) // C6
+                )
+            )
+            playPcmSamples(samples, 475)
+        }
+    }
+
+    private data class NoteSpec(
+        val freqHz: Double,
+        val durationMs: Int,
+        val amplitude: Double
+    )
+
+    private fun synthesizeChirp(
+        startFreqHz: Double,
+        endFreqHz: Double,
+        durationMs: Int,
+        amplitude: Double
+    ): ShortArray {
+        val totalSamples = (SAMPLE_RATE * durationMs) / 1000
+        val out = ShortArray(totalSamples)
+        val fadeSamples = (totalSamples * 0.18).toInt().coerceAtLeast(16)
+        var phase = 0.0
+
+        for (i in 0 until totalSamples) {
+            val progress = i.toDouble() / totalSamples.toDouble()
+            val freq = startFreqHz + (endFreqHz - startFreqHz) * progress
+            phase += (2.0 * PI * freq) / SAMPLE_RATE
+
+            val fadeIn = if (i < fadeSamples) i.toDouble() / fadeSamples else 1.0
+            val fadeOut = if (i > totalSamples - fadeSamples) {
+                (totalSamples - i).toDouble() / fadeSamples
+            } else {
+                1.0
+            }
+            val expDecay = exp(-2.8 * progress)
+            val env = fadeIn * fadeOut * expDecay
+
+            val wave = sin(phase) + 0.25 * sin(phase * 2.0)
+            val sampleVal = (wave * 0.8 * amplitude * env).coerceIn(-1.0, 1.0)
+            out[i] = (sampleVal * Short.MAX_VALUE).toInt().toShort()
+        }
+        return out
+    }
+
+    private fun synthesizeSequence(notes: List<NoteSpec>): ShortArray {
+        val totalMs = notes.sumOf { it.durationMs }
+        val totalSamples = (SAMPLE_RATE * totalMs) / 1000
+        val out = ShortArray(totalSamples)
+        var offset = 0
+
+        for (note in notes) {
+            val count = (SAMPLE_RATE * note.durationMs) / 1000
+            val attack = (count * 0.12).toInt().coerceAtLeast(16)
+            val release = (count * 0.22).toInt().coerceAtLeast(16)
+            var phase = 0.0
+
+            for (i in 0 until count) {
+                val idx = offset + i
+                if (idx >= totalSamples) break
+                val progress = i.toDouble() / count.toDouble()
+                phase += (2.0 * PI * note.freqHz) / SAMPLE_RATE
+
+                val fadeIn = if (i < attack) i.toDouble() / attack else 1.0
+                val fadeOut = if (i > count - release) (count - i).toDouble() / release else 1.0
+                val decay = exp(-2.2 * progress)
+                val env = fadeIn * fadeOut * decay
+
+                val wave = sin(phase) + 0.30 * sin(phase * 2.0) + 0.10 * sin(phase * 3.0)
+                val sampleVal = (wave * 0.72 * note.amplitude * env).coerceIn(-1.0, 1.0)
+                out[idx] = (sampleVal * Short.MAX_VALUE).toInt().toShort()
+            }
+            offset += count
+        }
+        return out
+    }
+
+    private suspend fun playPcmSamples(pcm16: ShortArray, durationMs: Int) {
+        if (pcm16.isEmpty()) return
+        var track: AudioTrack? = null
+        try {
+            val byteSize = (pcm16.size * 2).coerceAtLeast(
+                AudioTrack.getMinBufferSize(
+                    SAMPLE_RATE,
+                    AudioFormat.CHANNEL_OUT_MONO,
+                    AudioFormat.ENCODING_PCM_16BIT
+                )
+            )
+            track = AudioTrack.Builder()
+                .setAudioAttributes(
+                    AudioAttributes.Builder()
+                        .setUsage(AudioAttributes.USAGE_ASSISTANCE_SONIFICATION)
+                        .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                        .build()
+                )
+                .setAudioFormat(
+                    AudioFormat.Builder()
+                        .setEncoding(AudioFormat.ENCODING_PCM_16BIT)
+                        .setSampleRate(SAMPLE_RATE)
+                        .setChannelMask(AudioFormat.CHANNEL_OUT_MONO)
+                        .build()
+                )
+                .setBufferSizeInBytes(byteSize)
+                .setTransferMode(AudioTrack.MODE_STATIC)
+                .build()
+
+            track.write(pcm16, 0, pcm16.size)
+            track.play()
+            delay(durationMs.toLong() + 45L)
+        } catch (_: Throwable) {
+        } finally {
+            try {
+                track?.stop()
+                track?.release()
+            } catch (_: Throwable) {}
+        }
+    }
+}
+""",
+
     "app/src/main/java/com/vocalfox/app/audio/GeminiLiveTutorClient.kt": """\
 package com.vocalfox.app.audio
 
@@ -36,10 +272,75 @@ data class TutorChatMessage(
 )
 
 /**
- * Direct REST client for Google Gemini Live AI Conversation Tutor.
- * Uses `models/gemini-3.8-flash` primarily, with automatic fallback to `models/gemini-2.5-flash` on 404.
+ * Client Live AI Ultra-Veloce con Fail-Fast (connectTimeout = 2500ms, readTimeout = 5000ms, 0ms delay),
+ * Sticky Session Cache in memoria e catena di fallback a 4 livelli:
+ * 1. gemini-3.8-flash
+ * 2. gemini-2.5-flash
+ * 3. gemini-2.5-flash-lite
+ * 4. gemini-4-hydrogen (con risoluzione dinamica dell'eventuale modello "hydrogen" disponibile per la chiave).
  */
 object GeminiLiveTutorClient {
+
+    private const val CONNECT_TIMEOUT_MS = 2500
+    private const val READ_TIMEOUT_MS = 5000
+
+    @Volatile
+    private var stickyModel: String? = null
+
+    @Volatile
+    private var resolvedHydrogenModel: String = "gemini-4-hydrogen"
+
+    @Volatile
+    private var hasCheckedModelsList: Boolean = false
+
+    /**
+     * Pre-check asincrono silenzioso chiamato all'apertura di LiveConversationScreen
+     * per individuare l'eventuale nome esatto del modello contenente "hydrogen" associato all'API key.
+     */
+    suspend fun preCheckHydrogenModelAsync(apiKey: String) = withContext(Dispatchers.IO) {
+        val cleanKey = apiKey.trim()
+        if (cleanKey.isBlank() || hasCheckedModelsList) return@withContext
+        hasCheckedModelsList = true
+
+        try {
+            val endpoint = "https://generativelanguage.googleapis.com/v1beta/models?key=$cleanKey"
+            val conn = (URL(endpoint).openConnection() as HttpURLConnection).apply {
+                requestMethod = "GET"
+                connectTimeout = CONNECT_TIMEOUT_MS
+                readTimeout = READ_TIMEOUT_MS
+            }
+            if (conn.responseCode in 200..299) {
+                val raw = BufferedReader(InputStreamReader(conn.inputStream, Charsets.UTF_8)).use { it.readText() }
+                val root = JSONObject(raw)
+                val modelsArr = root.optJSONArray("models") ?: return@withContext
+                for (i in 0 until modelsArr.length()) {
+                    val mObj = modelsArr.optJSONObject(i) ?: continue
+                    val rawName = mObj.optString("name", "").removePrefix("models/")
+                    if (rawName.contains("hydrogen", ignoreCase = true)) {
+                        resolvedHydrogenModel = rawName
+                        break
+                    }
+                }
+            }
+        } catch (_: Throwable) {
+            // Silenzioso: mantiene il fallback predefinito "gemini-4-hydrogen"
+        }
+    }
+
+    private fun buildOrderedModelChain(): List<String> {
+        val baseChain = listOf(
+            "gemini-3.8-flash",
+            "gemini-2.5-flash",
+            "gemini-2.5-flash-lite",
+            resolvedHydrogenModel
+        )
+        val currentSticky = stickyModel
+        return if (!currentSticky.isNullOrBlank()) {
+            listOf(currentSticky) + baseChain.filterNot { it.equals(currentSticky, ignoreCase = true) }
+        } else {
+            baseChain.distinct()
+        }
+    }
 
     suspend fun sendMessageToTutor(
         apiKey: String,
@@ -52,7 +353,12 @@ object GeminiLiveTutorClient {
     ): Result<TutorChatMessage> = withContext(Dispatchers.IO) {
         val cleanKey = apiKey.trim()
         if (cleanKey.isBlank()) {
-            return@withContext Result.failure(IllegalArgumentException("API Key mancante"))
+            val msg = if (systemLang == SystemLang.IT) {
+                "Inserisci la tua chiave API Gemini nella scheda Profilo o usa il pulsante ✨ in alto."
+            } else {
+                "Enter your Gemini API Key in the Profile tab or tap the ✨ button above."
+            }
+            return@withContext Result.failure(IllegalArgumentException(msg))
         }
 
         val targetLangName = if (targetLanguageCode == "de") "German (Deutsch)" else "Spanish (Español)"
@@ -87,7 +393,7 @@ object GeminiLiveTutorClient {
                 .put("parts", JSONArray().put(userPart))
         )
 
-        val payload = JSONObject().apply {
+        val payloadString = JSONObject().apply {
             put(
                 "system_instruction",
                 JSONObject().put("parts", JSONArray().put(JSONObject().put("text", systemInstruction)))
@@ -99,24 +405,24 @@ object GeminiLiveTutorClient {
                     .put("temperature", 0.7)
                     .put("responseMimeType", "application/json")
             )
-        }
+        }.toString()
 
-        val modelsToTry = listOf("gemini-3.8-flash", "gemini-2.5-flash")
-        var lastError: Throwable? = null
+        val modelsChain = buildOrderedModelChain()
+        var encounteredAuthKeyError = false
 
-        for (modelName in modelsToTry) {
+        for (modelName in modelsChain) {
             try {
                 val endpoint = "https://generativelanguage.googleapis.com/v1beta/models/$modelName:generateContent?key=$cleanKey"
                 val conn = (URL(endpoint).openConnection() as HttpURLConnection).apply {
                     requestMethod = "POST"
-                    connectTimeout = 15000
-                    readTimeout = 20000
+                    connectTimeout = CONNECT_TIMEOUT_MS
+                    readTimeout = READ_TIMEOUT_MS
                     doOutput = true
                     setRequestProperty("Content-Type", "application/json; charset=UTF-8")
                 }
 
                 OutputStreamWriter(conn.outputStream, Charsets.UTF_8).use { writer ->
-                    writer.write(payload.toString())
+                    writer.write(payloadString)
                 }
 
                 val code = conn.responseCode
@@ -142,6 +448,9 @@ object GeminiLiveTutorClient {
                         .trim()
 
                     val parsed = JSONObject(textOut)
+                    // Memorizza questo modello come Sticky Model per i messaggi successivi
+                    stickyModel = modelName
+
                     return@withContext Result.success(
                         TutorChatMessage(
                             isUser = false,
@@ -151,1087 +460,44 @@ object GeminiLiveTutorClient {
                         )
                     )
                 } else {
-                    lastError = RuntimeException("HTTP $code: $rawResponse")
-                    // If 404 Not Found on primary model, loop continues to fallback model
-                    if (code != 404) break
-                }
-            } catch (e: Throwable) {
-                lastError = e
-            }
-        }
-
-        Result.failure(lastError ?: RuntimeException("Errore di connessione a Gemini API"))
-    }
-}
-""",
-
-    "app/src/main/java/com/vocalfox/app/ui/viewmodel/VocalFoxViewModel.kt": """\
-package com.vocalfox.app.ui.viewmodel
-
-import android.app.Application
-import android.content.Context
-import androidx.lifecycle.AndroidViewModel
-import androidx.lifecycle.viewModelScope
-import com.vocalfox.app.audio.PiperTtsManager
-import com.vocalfox.app.audio.PronunciationEvaluator
-import com.vocalfox.app.audio.PronunciationResult
-import com.vocalfox.app.data.local.MistakeSrsEntity
-import com.vocalfox.app.data.local.UserProgressEntity
-import com.vocalfox.app.data.local.VocalFoxDatabase
-import com.vocalfox.app.data.local.VoiceModelConfigEntity
-import com.vocalfox.app.data.repository.PackLoader
-import com.vocalfox.app.data.repository.VocalFoxRepository
-import com.vocalfox.app.domain.model.CefrLevel
-import com.vocalfox.app.domain.model.GrammarSyntaxExercise
-import com.vocalfox.app.domain.model.LanguagePack
-import com.vocalfox.app.domain.model.PronunciationDrill
-import com.vocalfox.app.domain.model.VoicePreset
-import com.vocalfox.app.domain.model.WritingExercise
-import com.vocalfox.app.ui.i18n.SystemLang
-import com.vocalfox.app.ui.theme.MascotState
-import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.SharingStarted
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.flatMapLatest
-import kotlinx.coroutines.flow.stateIn
-import kotlinx.coroutines.launch
-
-data class WritingEvaluationFeedback(
-    val score: Int,
-    val matchedMorphemes: List<String>,
-    val missingMorphemes: List<String>,
-    val mascotState: MascotState,
-    val explanation: String
-)
-
-@OptIn(ExperimentalCoroutinesApi::class)
-class VocalFoxViewModel(application: Application) : AndroidViewModel(application) {
-    private val prefs = application.getSharedPreferences("vocalfox_prefs", Context.MODE_PRIVATE)
-    private val database = VocalFoxDatabase.getInstance(application)
-    private val repository = VocalFoxRepository(database.dao(), PackLoader(application))
-    val ttsManager = PiperTtsManager(application)
-    private val pronunciationEvaluator = PronunciationEvaluator()
-
-    private val initialSysLang: SystemLang = run {
-        val saved = prefs.getString("system_lang", SystemLang.IT.name) ?: SystemLang.IT.name
-        SystemLang.entries.firstOrNull { it.name == saved } ?: SystemLang.IT
-    }
-    private val initialLangCode: String = prefs.getString("target_lang", "es") ?: "es"
-    private val initialCefr: CefrLevel = run {
-        val saved = prefs.getString("selected_cefr", CefrLevel.A1.name) ?: CefrLevel.A1.name
-        CefrLevel.entries.firstOrNull { it.name == saved } ?: CefrLevel.A1
-    }
-    private val initialDark: Boolean = prefs.getBoolean("dark_mode", false)
-
-    private val _systemLang = MutableStateFlow(initialSysLang)
-    val systemLang: StateFlow<SystemLang> = _systemLang.asStateFlow()
-
-    private val _isDarkMode = MutableStateFlow(initialDark)
-    val isDarkMode: StateFlow<Boolean> = _isDarkMode.asStateFlow()
-
-    private val _selectedLanguageCode = MutableStateFlow(initialLangCode)
-    val selectedLanguageCode: StateFlow<String> = _selectedLanguageCode.asStateFlow()
-
-    private val _selectedCefr = MutableStateFlow(initialCefr)
-    val selectedCefr: StateFlow<CefrLevel> = _selectedCefr.asStateFlow()
-
-    private val _showFurigana = MutableStateFlow(true)
-    val showFurigana: StateFlow<Boolean> = _showFurigana.asStateFlow()
-
-    private val _showRomaji = MutableStateFlow(true)
-    val showRomaji: StateFlow<Boolean> = _showRomaji.asStateFlow()
-
-    private val _isRecordingAudio = MutableStateFlow(false)
-    val isRecordingAudio: StateFlow<Boolean> = _isRecordingAudio.asStateFlow()
-
-    private val _latestPronunciationResult = MutableStateFlow<PronunciationResult?>(null)
-    val latestPronunciationResult: StateFlow<PronunciationResult?> = _latestPronunciationResult.asStateFlow()
-
-    private var recordingJob: Job? = null
-
-    val allPacks: Map<String, LanguagePack> = repository.getAllPacks()
-
-    val currentPack: StateFlow<LanguagePack> = _selectedLanguageCode
-        .combine(_selectedCefr) { code, _ -> repository.getPack(code) }
-        .stateIn(viewModelScope, SharingStarted.Eagerly, repository.getPack(initialLangCode))
-
-    val progressList: StateFlow<List<UserProgressEntity>> = _selectedLanguageCode
-        .flatMapLatest { code -> repository.observeProgress(code) }
-        .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
-
-    val srsList: StateFlow<List<MistakeSrsEntity>> = _selectedLanguageCode
-        .flatMapLatest { code -> repository.observeSrsItems(code) }
-        .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
-
-    val voiceConfigs: StateFlow<List<VoiceModelConfigEntity>> = repository
-        .observeVoiceConfigs()
-        .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
-
-    init {
-        viewModelScope.launch {
-            allPacks.values.forEach { pack ->
-                val defaultVoice = pack.availableVoices.firstOrNull() ?: return@forEach
-                ttsManager.ensureLocalVoiceSlot(defaultVoice)
-            }
-        }
-    }
-
-    fun setSystemLanguage(lang: SystemLang) {
-        _systemLang.value = lang
-        prefs.edit().putString("system_lang", lang.name).apply()
-    }
-
-    fun toggleDarkMode(enabled: Boolean) {
-        _isDarkMode.value = enabled
-        prefs.edit().putBoolean("dark_mode", enabled).apply()
-    }
-
-    fun selectLanguage(code: String) {
-        _selectedLanguageCode.value = code
-        _latestPronunciationResult.value = null
-        prefs.edit().putString("target_lang", code).apply()
-    }
-
-    fun selectCefr(level: CefrLevel) {
-        _selectedCefr.value = level
-        _latestPronunciationResult.value = null
-        prefs.edit().putString("selected_cefr", level.name).apply()
-    }
-
-    fun toggleFurigana(enabled: Boolean) {
-        _showFurigana.value = enabled
-    }
-
-    fun toggleRomaji(enabled: Boolean) {
-        _showRomaji.value = enabled
-    }
-
-    fun getActiveVoiceForLanguage(languageCode: String): VoicePreset {
-        val pack = repository.getPack(languageCode)
-        val savedId = voiceConfigs.value.firstOrNull { it.languageCode == languageCode }?.selectedVoiceId
-        return pack.availableVoices.firstOrNull { it.voiceId == savedId }
-            ?: pack.availableVoices.first()
-    }
-
-    fun selectVoicePreset(languageCode: String, preset: VoicePreset) {
-        viewModelScope.launch {
-            val verified = ttsManager.ensureLocalVoiceSlot(preset)
-            repository.saveVoiceConfig(
-                languageCode = languageCode,
-                voiceId = preset.voiceId,
-                speed = 1.0f,
-                verified = verified
-            )
-        }
-    }
-
-    fun speakSentence(text: String, speed: Float = 1.0f) {
-        val lang = _selectedLanguageCode.value
-        val preset = getActiveVoiceForLanguage(lang)
-        ttsManager.speak(text = text, languageCode = lang, preset = preset, speed = speed)
-    }
-
-    fun recordSyntaxCompletion(exercise: GrammarSyntaxExercise, isCorrect: Boolean) {
-        viewModelScope.launch {
-            val score = if (isCorrect) 95 else 40
-            repository.recordExerciseOutcome(
-                itemKey = exercise.id,
-                languageCode = _selectedLanguageCode.value,
-                cefrLevel = exercise.cefr,
-                pillar = "SYNTAX",
-                score = score,
-                promptPreview = exercise.promptSentence,
-                targetAnswer = exercise.blankTarget,
-                mistakeNote = exercise.explanation.get(_systemLang.value)
-            )
-        }
-    }
-
-    fun evaluateWritingSubmission(
-        exercise: WritingExercise,
-        userInput: String
-    ): WritingEvaluationFeedback {
-        val normalizedUser = userInput.trim().lowercase()
-        val matched = exercise.requiredMorphemes.filter { morpheme ->
-            normalizedUser.contains(morpheme.lowercase())
-        }
-        val missing = exercise.requiredMorphemes.filter { morpheme ->
-            !normalizedUser.contains(morpheme.lowercase())
-        }
-
-        val exactMatch = exercise.referenceTargets.any {
-            it.trim().lowercase().trimEnd('.', '。') == normalizedUser.trimEnd('.', '。')
-        }
-
-        val ratio = if (exercise.requiredMorphemes.isEmpty()) 1f
-        else matched.size.toFloat() / exercise.requiredMorphemes.size
-
-        val score = when {
-            exactMatch -> 98
-            ratio >= 1.0f && normalizedUser.length >= 8 -> 90
-            ratio >= 0.5f -> (60 + ratio * 25).toInt()
-            normalizedUser.isNotBlank() -> 35
-            else -> 0
-        }
-
-        val mascot = when {
-            score >= 85 -> MascotState.CELEBRATE
-            score >= 60 -> MascotState.THINKING
-            score > 0 -> MascotState.STRICT_COACH
-            else -> MascotState.ENCOURAGE_SAD
-        }
-
-        viewModelScope.launch {
-            repository.recordExerciseOutcome(
-                itemKey = exercise.id,
-                languageCode = _selectedLanguageCode.value,
-                cefrLevel = exercise.cefr,
-                pillar = "WRITING",
-                score = score,
-                promptPreview = exercise.sourcePrompt.get(_systemLang.value),
-                targetAnswer = exercise.referenceTargets.firstOrNull().orEmpty(),
-                mistakeNote = exercise.jitFeedback.get(_systemLang.value)
-            )
-        }
-
-        return WritingEvaluationFeedback(
-            score = score,
-            matchedMorphemes = matched,
-            missingMorphemes = missing,
-            mascotState = mascot,
-            explanation = exercise.jitFeedback.get(_systemLang.value)
-        )
-    }
-
-    fun startRecordingPronunciation(drill: PronunciationDrill) {
-        if (_isRecordingAudio.value) return
-        _isRecordingAudio.value = true
-        recordingJob = viewModelScope.launch {
-            val pcm = pronunciationEvaluator.recordAudioPcm()
-            _isRecordingAudio.value = false
-            val result = pronunciationEvaluator.evaluate(
-                pcmSamples = pcm,
-                drill = drill,
-                languageCode = _selectedLanguageCode.value,
-                systemLang = _systemLang.value
-            )
-            _latestPronunciationResult.value = result
-            repository.recordExerciseOutcome(
-                itemKey = drill.id,
-                languageCode = _selectedLanguageCode.value,
-                cefrLevel = drill.cefr,
-                pillar = "SPEECH",
-                score = result.overallScore,
-                promptPreview = drill.targetSentence,
-                targetAnswer = drill.fullIpa,
-                mistakeNote = result.summaryAdvice
-            )
-        }
-    }
-
-    fun stopAndEvaluatePronunciation(drill: PronunciationDrill, simulatedTranscript: String? = null) {
-        if (_isRecordingAudio.value) {
-            pronunciationEvaluator.stopCapture()
-        } else {
-            viewModelScope.launch {
-                val result = pronunciationEvaluator.evaluate(
-                    pcmSamples = ShortArray(0),
-                    drill = drill,
-                    languageCode = _selectedLanguageCode.value,
-                    systemLang = _systemLang.value,
-                    simulatedTranscript = simulatedTranscript
-                )
-                _latestPronunciationResult.value = result
-                repository.recordExerciseOutcome(
-                    itemKey = drill.id,
-                    languageCode = _selectedLanguageCode.value,
-                    cefrLevel = drill.cefr,
-                    pillar = "SPEECH",
-                    score = result.overallScore,
-                    promptPreview = drill.targetSentence,
-                    targetAnswer = drill.fullIpa,
-                    mistakeNote = result.summaryAdvice
-                )
-            }
-        }
-    }
-
-    override fun onCleared() {
-        super.onCleared()
-        ttsManager.shutdown()
-    }
-}
-""",
-
-    "app/src/main/java/com/vocalfox/app/MainActivity.kt": """\
-package com.vocalfox.app
-
-import android.content.Context
-import android.os.Bundle
-import androidx.activity.ComponentActivity
-import androidx.activity.compose.setContent
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.navigationBarsPadding
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.statusBarsPadding
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Explore
-import androidx.compose.material.icons.outlined.Forum
-import androidx.compose.material.icons.outlined.Home
-import androidx.compose.material.icons.outlined.Person
-import androidx.compose.material3.Icon
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.unit.dp
-import androidx.lifecycle.ViewModelProvider
-import com.vocalfox.app.ui.i18n.AppStrings
-import com.vocalfox.app.ui.i18n.SystemLang
-import com.vocalfox.app.ui.screens.ExploreStudyHubScreen
-import com.vocalfox.app.ui.screens.GuidedLessonScreen
-import com.vocalfox.app.ui.screens.GuidedUnitBundle
-import com.vocalfox.app.ui.screens.HomeScreen
-import com.vocalfox.app.ui.screens.LiveConversationScreen
-import com.vocalfox.app.ui.screens.OnboardingScreen
-import com.vocalfox.app.ui.screens.SettingsVoiceScreen
-import com.vocalfox.app.ui.screens.SplashScreenOverlay
-import com.vocalfox.app.ui.theme.VocalFoxTheme
-import com.vocalfox.app.ui.theme.VocalFoxType
-import com.vocalfox.app.ui.viewmodel.VocalFoxViewModel
-import kotlinx.coroutines.delay
-
-class MainActivity : ComponentActivity() {
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-
-        val vm = ViewModelProvider(
-            this,
-            ViewModelProvider.AndroidViewModelFactory.getInstance(application)
-        )[VocalFoxViewModel::class.java]
-
-        setContent {
-            val isDark by vm.isDarkMode.collectAsState()
-            VocalFoxTheme(darkTheme = isDark) {
-                VocalFoxRootApp(viewModel = vm)
-            }
-        }
-    }
-}
-
-private enum class MainTab {
-    TODAY, EXPLORE, LIVE_AI, PROFILE
-}
-
-@Composable
-private fun VocalFoxRootApp(viewModel: VocalFoxViewModel) {
-    val context = LocalContext.current
-    val prefs = remember { context.getSharedPreferences("vocalfox_prefs", Context.MODE_PRIVATE) }
-
-    val colors = VocalFoxTheme.colors
-    val systemLang by viewModel.systemLang.collectAsState()
-    val isDarkMode by viewModel.isDarkMode.collectAsState()
-    val currentPack by viewModel.currentPack.collectAsState()
-    val selectedCefr by viewModel.selectedCefr.collectAsState()
-    val progressList by viewModel.progressList.collectAsState()
-    val voiceConfigs by viewModel.voiceConfigs.collectAsState()
-    val isRecording by viewModel.isRecordingAudio.collectAsState()
-    val pronunciationResult by viewModel.latestPronunciationResult.collectAsState()
-
-    val strings = AppStrings.forLang(systemLang)
-
-    var showSplash by rememberSaveable { mutableStateOf(true) }
-    var hasCompletedOnboarding by rememberSaveable {
-        mutableStateOf(prefs.getBoolean("onboarding_done", false))
-    }
-    var activeTab by rememberSaveable { mutableStateOf(MainTab.TODAY) }
-    var activeGuidedUnit by remember { mutableStateOf<GuidedUnitBundle?>(null) }
-
-    LaunchedEffect(Unit) {
-        delay(2200L)
-        showSplash = false
-    }
-
-    if (showSplash) {
-        SplashScreenOverlay(onFinished = { showSplash = false })
-        return
-    }
-
-    if (!hasCompletedOnboarding) {
-        OnboardingScreen(
-            allPacks = viewModel.allPacks,
-            selectedLangCode = currentPack.languageCode,
-            systemLang = systemLang,
-            strings = strings,
-            onSelectSystemLang = viewModel::setSystemLanguage,
-            onSelectTargetLang = viewModel::selectLanguage,
-            onCompleteOnboarding = { chosenCefr ->
-                viewModel.selectCefr(chosenCefr)
-                prefs.edit().putBoolean("onboarding_done", true).apply()
-                hasCompletedOnboarding = true
-            }
-        )
-        return
-    }
-
-    val currentUnit = activeGuidedUnit
-    if (currentUnit != null) {
-        GuidedLessonScreen(
-            bundle = currentUnit,
-            systemLang = systemLang,
-            strings = strings,
-            isRecording = isRecording,
-            pronunciationResult = pronunciationResult,
-            onSpeakText = { text, speed -> viewModel.speakSentence(text, speed) },
-            onStartRecording = viewModel::startRecordingPronunciation,
-            onStopAndEvaluate = { drill -> viewModel.stopAndEvaluatePronunciation(drill, null) },
-            onCompleteUnit = { bundle, _ ->
-                viewModel.recordSyntaxCompletion(bundle.grammarExercise, true)
-            },
-            onClose = { activeGuidedUnit = null }
-        )
-        return
-    }
-
-    Scaffold(
-        containerColor = colors.background,
-        bottomBar = {
-            CleanBottomNavigationBar(
-                activeTab = activeTab,
-                systemLang = systemLang,
-                onSelectTab = { activeTab = it }
-            )
-        }
-    ) { innerPadding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding)
-        ) {
-            when (activeTab) {
-                MainTab.TODAY -> HomeScreen(
-                    allPacks = viewModel.allPacks,
-                    currentPack = currentPack,
-                    selectedCefr = selectedCefr,
-                    systemLang = systemLang,
-                    strings = strings,
-                    progressList = progressList,
-                    onSelectLanguage = viewModel::selectLanguage,
-                    onSelectCefr = viewModel::selectCefr,
-                    onStartGuidedUnit = { unit -> activeGuidedUnit = unit },
-                    onOpenProfileSettings = { activeTab = MainTab.PROFILE }
-                )
-
-                MainTab.EXPLORE -> ExploreStudyHubScreen(
-                    currentPack = currentPack,
-                    systemLang = systemLang,
-                    strings = strings,
-                    onPlayAudio = { text, speed -> viewModel.speakSentence(text, speed) }
-                )
-
-                MainTab.LIVE_AI -> LiveConversationScreen(
-                    currentPack = currentPack,
-                    selectedCefr = selectedCefr,
-                    systemLang = systemLang,
-                    onSpeakText = { text, speed -> viewModel.speakSentence(text, speed) },
-                    onOpenSettingsForApiKey = { activeTab = MainTab.PROFILE }
-                )
-
-                MainTab.PROFILE -> Column(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .statusBarsPadding()
-                ) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 20.dp, vertical = 12.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            text = strings.profileSettingsTitle,
-                            style = VocalFoxType.PageTitle,
-                            color = colors.primaryText
-                        )
-                        Row(
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(10.dp))
-                                .background(colors.raised)
-                                .clickable {
-                                    prefs.edit().putBoolean("onboarding_done", false).apply()
-                                    hasCompletedOnboarding = false
-                                }
-                                .padding(horizontal = 12.dp, vertical = 8.dp)
+                    // Se lo stickyModel ha fallito (503, 429, 404, 500), resettalo e passa con 0ms di attesa al modello successivo
+                    if (stickyModel == modelName) {
+                        stickyModel = null
+                    }
+                    if (code == 400 || code == 403) {
+                        if (rawResponse.contains("API_KEY_INVALID", ignoreCase = true) ||
+                            rawResponse.contains("API key not valid", ignoreCase = true)
                         ) {
-                            Text(
-                                text = strings.retakePlacementAction,
-                                style = VocalFoxType.SecondaryCaption,
-                                color = colors.accent
-                            )
+                            encounteredAuthKeyError = true
+                            break
                         }
                     }
-                    SettingsVoiceScreen(
-                        allPacks = viewModel.allPacks,
-                        voiceConfigs = voiceConfigs,
-                        systemLang = systemLang,
-                        isDarkMode = isDarkMode,
-                        strings = strings,
-                        onSelectSystemLang = viewModel::setSystemLanguage,
-                        onToggleDarkMode = viewModel::toggleDarkMode,
-                        onSelectVoicePreset = viewModel::selectVoicePreset,
-                        onPreviewVoice = { langCode, preset ->
-                            val sampleText = viewModel.allPacks[langCode]
-                                ?.pronunciationDrills
-                                ?.firstOrNull()
-                                ?.targetSentence
-                                .orEmpty()
-                            viewModel.ttsManager.speak(sampleText, langCode, preset, 1.0f)
-                        },
-                        selectedTargetLangCode = currentPack.languageCode,
-                        onSelectTargetLang = viewModel::selectLanguage
-                    )
+                    // Continua immediatamente al prossimo modello della catena (0ms delay)
+                }
+            } catch (_: Throwable) {
+                // SocketTimeoutException / IOException: resetta lo stickyModel e passa subito al modello successivo
+                if (stickyModel == modelName) {
+                    stickyModel = null
                 }
             }
         }
-    }
-}
 
-@Composable
-private fun CleanBottomNavigationBar(
-    activeTab: MainTab,
-    systemLang: SystemLang,
-    onSelectTab: (MainTab) -> Unit
-) {
-    val colors = VocalFoxTheme.colors
-    val isIt = systemLang == SystemLang.IT
-
-    val tabs = listOf(
-        Triple(MainTab.TODAY, if (isIt) "Percorso" else "Path", Icons.Outlined.Home),
-        Triple(MainTab.EXPLORE, if (isIt) "Accademia" else "Academy", Icons.Outlined.Explore),
-        Triple(MainTab.LIVE_AI, "Live AI", Icons.Outlined.Forum),
-        Triple(MainTab.PROFILE, if (isIt) "Profilo" else "Profile", Icons.Outlined.Person)
-    )
-
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(colors.card)
-            .border(1.dp, colors.hairline)
-            .navigationBarsPadding()
-            .padding(horizontal = 12.dp, vertical = 8.dp),
-        horizontalArrangement = Arrangement.SpaceEvenly,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        tabs.forEach { (tab, label, icon) ->
-            val selected = activeTab == tab
-            Column(
-                modifier = Modifier
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(if (selected) colors.accent.copy(alpha = 0.12f) else Color.Transparent)
-                    .clickable { onSelectTab(tab) }
-                    .padding(horizontal = 16.dp, vertical = 6.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(2.dp)
-            ) {
-                Icon(
-                    imageVector = icon,
-                    contentDescription = label,
-                    tint = if (selected) colors.accent else colors.mutedText,
-                    modifier = Modifier.size(22.dp)
-                )
-                Text(
-                    text = label,
-                    style = VocalFoxType.SecondaryCaption,
-                    color = if (selected) colors.accent else colors.mutedText,
-                    maxLines = 1
-                )
+        val friendlyMessage = if (encounteredAuthKeyError) {
+            if (systemLang == SystemLang.IT) {
+                "La chiave API Gemini inserita nel Profilo non è valida. Controllala o usa il pulsante ✨ in alto."
+            } else {
+                "The Gemini API key in Profile is invalid. Please check it or tap the ✨ button above."
             }
-        }
-    }
-}
-""",
-
-    "app/src/main/java/com/vocalfox/app/ui/screens/HomeScreen.kt": """\
-package com.vocalfox.app.ui.screens
-
-import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.horizontalScroll
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.IntrinsicSize
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.statusBarsPadding
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Check
-import androidx.compose.material.icons.outlined.LocalFireDepartment
-import androidx.compose.material.icons.outlined.PlayArrow
-import androidx.compose.material3.Icon
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.StrokeCap
-import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.dp
-import com.vocalfox.app.data.local.UserProgressEntity
-import com.vocalfox.app.data.repository.CurriculumGenerator
-import com.vocalfox.app.domain.model.CefrLevel
-import com.vocalfox.app.domain.model.LanguagePack
-import com.vocalfox.app.ui.i18n.SystemLang
-import com.vocalfox.app.ui.i18n.UiStrings
-import com.vocalfox.app.ui.theme.VocalFoxMascot
-import com.vocalfox.app.ui.theme.VocalFoxTheme
-import com.vocalfox.app.ui.theme.VocalFoxType
-import com.vocalfox.app.ui.theme.VocalFoxWordmark
-import java.time.Instant
-import java.time.LocalDate
-import java.time.ZoneId
-
-@Composable
-fun HomeScreen(
-    allPacks: Map<String, LanguagePack>,
-    currentPack: LanguagePack,
-    selectedCefr: CefrLevel,
-    systemLang: SystemLang,
-    strings: UiStrings,
-    progressList: List<UserProgressEntity>,
-    onSelectLanguage: (String) -> Unit,
-    onSelectCefr: (CefrLevel) -> Unit,
-    onStartGuidedUnit: (GuidedUnitBundle) -> Unit,
-    onOpenProfileSettings: () -> Unit
-) {
-    val colors = VocalFoxTheme.colors
-    val isIt = systemLang == SystemLang.IT
-
-    val all50Units = remember(currentPack.languageCode, selectedCefr, systemLang) {
-        CurriculumGenerator.generate50UnitsForLevel(currentPack, selectedCefr, systemLang)
-    }
-
-    var selectedChapterFilter by remember(selectedCefr) { mutableIntStateOf(0) }
-    val displayedUnits = remember(all50Units, selectedChapterFilter) {
-        if (selectedChapterFilter == 0) {
-            all50Units
         } else {
-            val startIdx = (selectedChapterFilter - 1) * 10
-            all50Units.subList(startIdx, (startIdx + 10).coerceAtMost(all50Units.size))
-        }
-    }
-
-    val completedCount = progressList.count { it.bestScore >= 70 }
-    val realStreakDays = remember(progressList) {
-        calculateConsecutiveDayStreak(progressList)
-    }
-
-    val dailyTarget = 4
-    val completedToday = remember(progressList) {
-        val zone = ZoneId.systemDefault()
-        val today = LocalDate.now(zone)
-        progressList.count {
-            it.bestScore >= 70 &&
-                it.completedAtEpochMs > 0L &&
-                Instant.ofEpochMilli(it.completedAtEpochMs).atZone(zone).toLocalDate() == today
-        }
-    }
-    val dailyProgressRatio = (completedToday.toFloat() / dailyTarget.toFloat()).coerceIn(0f, 1f)
-
-    LazyColumn(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(colors.background)
-            .statusBarsPadding()
-            .padding(horizontal = 20.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
-    ) {
-        item {
-            Spacer(modifier = Modifier.height(8.dp))
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                VocalFoxWordmark(height = 32.dp)
-
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(12.dp))
-                            .background(colors.card)
-                            .border(1.dp, colors.hairline, RoundedCornerShape(12.dp))
-                            .clickable(onClick = onOpenProfileSettings)
-                            .padding(horizontal = 12.dp, vertical = 7.dp)
-                    ) {
-                        Text(
-                            text = "${currentPack.languageName.get(systemLang)} · ${selectedCefr.name}",
-                            style = VocalFoxType.BodyMedium,
-                            color = colors.primaryText
-                        )
-                    }
-
-                    Row(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(12.dp))
-                            .background(colors.card)
-                            .border(1.dp, colors.hairline, RoundedCornerShape(12.dp))
-                            .padding(horizontal = 10.dp, vertical = 7.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(4.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Outlined.LocalFireDepartment,
-                            contentDescription = null,
-                            tint = if (realStreakDays > 0) colors.accent else colors.mutedText,
-                            modifier = Modifier.size(18.dp)
-                        )
-                        Text(
-                            text = "$realStreakDays",
-                            style = VocalFoxType.BodyMedium,
-                            color = colors.primaryText
-                        )
-                    }
-                }
+            if (systemLang == SystemLang.IT) {
+                "Tutti i modelli AI sono momentaneamente occupati, riprova tra pochi secondi oppure tocca ✨ in alto per usare l'app Gemini."
+            } else {
+                "All AI models are currently busy, please try again in a few seconds or tap ✨ above to use the Gemini app."
             }
         }
 
-        item {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                CefrLevel.entries.forEach { level ->
-                    val isSelected = level == selectedCefr
-                    val doneInLevel = progressList.count { it.cefrLevel == level.name && it.bestScore >= 70 }
-                    Column(
-                        modifier = Modifier
-                            .weight(1f)
-                            .clip(RoundedCornerShape(14.dp))
-                            .background(if (isSelected) colors.accent else colors.card)
-                            .border(
-                                width = 1.dp,
-                                color = if (isSelected) colors.accent else colors.hairline,
-                                shape = RoundedCornerShape(14.dp)
-                            )
-                            .clickable { onSelectCefr(level) }
-                            .padding(vertical = 10.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(2.dp)
-                    ) {
-                        Text(
-                            text = level.name,
-                            style = VocalFoxType.SectionTitle,
-                            color = if (isSelected) colors.onAccent else colors.primaryText,
-                            maxLines = 1
-                        )
-                        Text(
-                            text = "$doneInLevel/50",
-                            style = VocalFoxType.SecondaryCaption,
-                            color = if (isSelected) colors.onAccent.copy(alpha = 0.85f) else colors.mutedText,
-                            maxLines = 1
-                        )
-                    }
-                }
-            }
-        }
-
-        item {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(16.dp))
-                    .background(colors.card)
-                    .border(1.dp, colors.hairline, RoundedCornerShape(16.dp))
-                    .padding(16.dp),
-                horizontalArrangement = Arrangement.spacedBy(16.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Box(
-                    modifier = Modifier.size(68.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    val trackCol = colors.raised
-                    val arcCol = colors.accent
-                    Canvas(modifier = Modifier.fillMaxSize()) {
-                        drawArc(
-                            color = trackCol,
-                            startAngle = 135f,
-                            sweepAngle = 270f,
-                            useCenter = false,
-                            style = Stroke(width = 16f, cap = StrokeCap.Round)
-                        )
-                        if (dailyProgressRatio > 0f) {
-                            drawArc(
-                                color = arcCol,
-                                startAngle = 135f,
-                                sweepAngle = 270f * dailyProgressRatio,
-                                useCenter = false,
-                                style = Stroke(width = 16f, cap = StrokeCap.Round)
-                            )
-                        }
-                    }
-                    Text(
-                        text = "$completedToday/$dailyTarget",
-                        style = VocalFoxType.BodyMedium,
-                        color = colors.primaryText
-                    )
-                }
-
-                Column(
-                    modifier = Modifier.weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
-                    Text(
-                        text = strings.dailyGoalTitle,
-                        style = VocalFoxType.SectionTitle,
-                        color = colors.primaryText
-                    )
-                    Text(
-                        text = if (isIt) "$completedCount unità completate in totale" else "$completedCount total units completed",
-                        style = VocalFoxType.SecondaryCaption,
-                        color = colors.secondaryText
-                    )
-                }
-            }
-        }
-
-        item {
-            val chapterFilters = listOf(
-                0 to (if (isIt) "Tutte" else "All"),
-                1 to "1–10",
-                2 to "11–20",
-                3 to "21–30",
-                4 to "31–40",
-                5 to "41–50"
-            )
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .horizontalScroll(rememberScrollState()),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                chapterFilters.forEach { (chapIdx, label) ->
-                    val active = selectedChapterFilter == chapIdx
-                    Box(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(10.dp))
-                            .background(if (active) colors.primaryText else colors.card)
-                            .border(1.dp, colors.hairline, RoundedCornerShape(10.dp))
-                            .clickable { selectedChapterFilter = chapIdx }
-                            .padding(horizontal = 14.dp, vertical = 8.dp)
-                    ) {
-                        Text(
-                            text = if (chapIdx == 0) label else (if (isIt) "Unità $label" else "Units $label"),
-                            style = VocalFoxType.BodyMedium,
-                            color = if (active) colors.background else colors.secondaryText,
-                            maxLines = 1
-                        )
-                    }
-                }
-            }
-        }
-
-        itemsIndexed(displayedUnits, key = { _, u -> u.grammarExercise.id }) { idx, unit ->
-            val isCompleted = progressList.any { it.itemKey == unit.grammarExercise.id && it.bestScore >= 70 }
-            val isNextActive = idx == 0 || !isCompleted
-
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(IntrinsicSize.Min),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    modifier = Modifier
-                        .width(16.dp)
-                        .fillMaxHeight()
-                ) {
-                    Spacer(modifier = Modifier.height(22.dp))
-                    Box(
-                        modifier = Modifier
-                            .size(12.dp)
-                            .clip(CircleShape)
-                            .background(
-                                when {
-                                    isCompleted -> colors.positive
-                                    idx == 0 -> colors.accent
-                                    else -> colors.raised
-                                }
-                            )
-                            .border(
-                                width = 2.dp,
-                                color = if (isNextActive) colors.accent else colors.mutedText.copy(alpha = 0.35f),
-                                shape = CircleShape
-                            )
-                    )
-                    if (idx < displayedUnits.lastIndex) {
-                        Box(
-                            modifier = Modifier
-                                .width(2.dp)
-                                .weight(1f)
-                                .padding(vertical = 4.dp)
-                                .background(colors.hairline)
-                        )
-                    }
-                }
-
-                Row(
-                    modifier = Modifier
-                        .weight(1f)
-                        .clip(RoundedCornerShape(16.dp))
-                        .background(colors.card)
-                        .border(
-                            width = if (idx == 0) 1.5.dp else 1.dp,
-                            color = if (idx == 0) colors.accent.copy(alpha = 0.5f) else colors.hairline,
-                            shape = RoundedCornerShape(16.dp)
-                        )
-                        .clickable { onStartGuidedUnit(unit) }
-                        .padding(16.dp),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Column(
-                        modifier = Modifier.weight(1f),
-                        verticalArrangement = Arrangement.spacedBy(6.dp)
-                    ) {
-                        Text(
-                            text = if (isIt) "Unità ${unit.unitIndex + 1}" else "Unit ${unit.unitIndex + 1}",
-                            style = VocalFoxType.SecondaryCaption,
-                            color = colors.accent,
-                            maxLines = 1
-                        )
-                        Text(
-                            text = unit.title,
-                            style = VocalFoxType.SectionTitle,
-                            color = colors.primaryText,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                        Text(
-                            text = unit.subtitle,
-                            style = VocalFoxType.SecondaryCaption,
-                            color = colors.secondaryText,
-                            maxLines = 2,
-                            overflow = TextOverflow.Ellipsis
-                        )
-
-                        Spacer(modifier = Modifier.height(2.dp))
-
-                        Row(
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(10.dp))
-                                .background(if (isCompleted) colors.positive.copy(alpha = 0.12f) else colors.accent)
-                                .padding(horizontal = 14.dp, vertical = 7.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(6.dp)
-                        ) {
-                            Icon(
-                                imageVector = if (isCompleted) Icons.Outlined.Check else Icons.Outlined.PlayArrow,
-                                contentDescription = null,
-                                tint = if (isCompleted) colors.positive else colors.onAccent,
-                                modifier = Modifier.size(16.dp)
-                            )
-                            Text(
-                                text = if (isCompleted) (if (isIt) "Completata" else "Completed") else strings.startUnitAction,
-                                style = VocalFoxType.BodyMedium,
-                                color = if (isCompleted) colors.positive else colors.onAccent,
-                                maxLines = 1
-                            )
-                        }
-                    }
-
-                    VocalFoxMascot(
-                        state = unit.mascotPose,
-                        size = 76.dp,
-                        tintBackground = unit.tintColor
-                    )
-                }
-            }
-        }
-
-        item { Spacer(modifier = Modifier.height(24.dp)) }
+        Result.failure(RuntimeException(friendlyMessage))
     }
-}
-
-private fun calculateConsecutiveDayStreak(progressList: List<UserProgressEntity>): Int {
-    val zone = ZoneId.systemDefault()
-    val completedDates = progressList
-        .filter { it.bestScore >= 70 && it.completedAtEpochMs > 0L }
-        .map { Instant.ofEpochMilli(it.completedAtEpochMs).atZone(zone).toLocalDate() }
-        .distinct()
-        .sortedDescending()
-
-    if (completedDates.isEmpty()) return 0
-
-    val today = LocalDate.now(zone)
-    if (completedDates.first().isBefore(today.minusDays(1))) return 0
-
-    var streak = 1
-    for (i in 0 until completedDates.lastIndex) {
-        if (completedDates[i].minusDays(1) == completedDates[i + 1]) {
-            streak++
-        } else {
-            break
-        }
-    }
-    return streak
-}
-
-fun buildGuidedUnitsForPack(
-    pack: LanguagePack,
-    selectedCefr: CefrLevel,
-    systemLang: SystemLang
-): List<GuidedUnitBundle> {
-    return CurriculumGenerator.generate50UnitsForLevel(pack, selectedCefr, systemLang)
 }
 """,
 
@@ -1276,6 +542,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
@@ -1291,6 +558,7 @@ import androidx.compose.ui.unit.dp
 import com.vocalfox.app.audio.GeminiHandoffHelper
 import com.vocalfox.app.audio.GeminiLiveTutorClient
 import com.vocalfox.app.audio.TutorChatMessage
+import com.vocalfox.app.audio.VocalFoxSfxManager
 import com.vocalfox.app.domain.model.CefrLevel
 import com.vocalfox.app.domain.model.LanguagePack
 import com.vocalfox.app.ui.i18n.SystemLang
@@ -1314,6 +582,12 @@ fun LiveConversationScreen(
     val colors = VocalFoxTheme.colors
     val scope = rememberCoroutineScope()
     val isIt = systemLang == SystemLang.IT
+
+    // Pre-check asincrono silenzioso all'apertura di Live AI per risolvere eventuale modello Hydrogen
+    LaunchedEffect(Unit) {
+        val currentKey = prefs.getString("gemini_api_key", "").orEmpty()
+        GeminiLiveTutorClient.preCheckHydrogenModelAsync(currentKey)
+    }
 
     val scenarios = remember(isIt) {
         if (isIt) {
@@ -1365,6 +639,7 @@ fun LiveConversationScreen(
         if (trimmed.isBlank() || isLoading) return
         val currentApiKey = prefs.getString("gemini_api_key", "").orEmpty().trim()
         if (currentApiKey.isBlank()) {
+            VocalFoxSfxManager.playError(context)
             errorMessage = if (isIt) {
                 "Per chattare qui inserisci la tua API Key nella scheda Profilo, oppure tocca l'icona ✨ in alto a destra per parlare subito nell'app Gemini."
             } else {
@@ -1374,6 +649,7 @@ fun LiveConversationScreen(
         }
 
         errorMessage = null
+        VocalFoxSfxManager.playChatPop(context)
         messages.add(TutorChatMessage(isUser = true, text = trimmed))
         userInput = ""
         isLoading = true
@@ -1390,10 +666,16 @@ fun LiveConversationScreen(
             )
             isLoading = false
             res.onSuccess { replyMsg ->
+                VocalFoxSfxManager.playChatPop(context)
                 messages.add(replyMsg)
                 onSpeakText(replyMsg.text, 1.0f)
             }.onFailure { err ->
-                errorMessage = err.localizedMessage ?: "Errore chiamata Gemini"
+                VocalFoxSfxManager.playError(context)
+                errorMessage = err.message ?: if (isIt) {
+                    "Tutti i modelli AI sono momentaneamente occupati, riprova tra pochi secondi."
+                } else {
+                    "All AI models are currently busy, please try again in a few seconds."
+                }
             }
         }
     }
@@ -1446,6 +728,7 @@ fun LiveConversationScreen(
                     .clip(CircleShape)
                     .background(colors.accent)
                     .clickable {
+                        VocalFoxSfxManager.playTileTap(context)
                         GeminiHandoffHelper.launchGeminiAppWithPrompt(
                             context = context,
                             targetLanguageCode = currentPack.languageCode,
@@ -1480,7 +763,10 @@ fun LiveConversationScreen(
                         .clip(RoundedCornerShape(12.dp))
                         .background(if (active) colors.accent else colors.card)
                         .border(1.dp, if (active) colors.accent else colors.hairline, RoundedCornerShape(12.dp))
-                        .clickable { selectedScenario = scen }
+                        .clickable {
+                            VocalFoxSfxManager.playTileTap(context)
+                            selectedScenario = scen
+                        }
                         .padding(horizontal = 14.dp, vertical = 8.dp)
                 ) {
                     Text(
@@ -1500,14 +786,14 @@ fun LiveConversationScreen(
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(12.dp))
                     .background(colors.card)
-                    .border(1.dp, colors.negative, RoundedCornerShape(12.dp))
-                    .clickable { onOpenSettingsForApiKey() }
+                    .border(1.dp, colors.warning, RoundedCornerShape(12.dp))
+                    .clickable { errorMessage = null }
                     .padding(12.dp)
             ) {
                 Text(
                     text = errorMessage!!,
                     style = VocalFoxType.SecondaryCaption,
-                    color = colors.negative
+                    color = colors.primaryText
                 )
             }
             Spacer(modifier = Modifier.height(8.dp))
@@ -1661,6 +947,7 @@ fun LiveConversationScreen(
                     .background(colors.raised)
                     .border(1.dp, colors.hairline, CircleShape)
                     .clickable {
+                        VocalFoxSfxManager.playTileTap(context)
                         try {
                             val localeTag = if (currentPack.languageCode == "de") "de-DE" else "es-ES"
                             val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
@@ -1784,6 +1071,7 @@ import androidx.core.content.ContextCompat
 import com.vocalfox.app.audio.GeminiHandoffHelper
 import com.vocalfox.app.audio.PhonemeAccuracyStatus
 import com.vocalfox.app.audio.PronunciationResult
+import com.vocalfox.app.audio.VocalFoxSfxManager
 import com.vocalfox.app.domain.model.CefrLevel
 import com.vocalfox.app.domain.model.GrammarSyntaxExercise
 import com.vocalfox.app.domain.model.LanguagePack
@@ -1815,10 +1103,6 @@ data class GuidedUnitBundle(
     val pronunciationDrill: PronunciationDrill
 )
 
-/**
- * Splash Screen con sfondo Nero Puro (#000000) così il riquadro nero dell'animazione WebP
- * si fonde alla perfezione ("blend in") senza alcun bordo visibile, seguito dal logotipo Vocalfox.
- */
 @Composable
 fun SplashScreenOverlay(
     onFinished: () -> Unit
@@ -1840,13 +1124,6 @@ fun SplashScreenOverlay(
     }
 }
 
-/**
- * Primo Avvio:
- * - Step 0: Schermata di Benvenuto in stile Duolingo (`6230cce907f5a532aa4b175e_5d38993213523202613a6180_Duo-1.png`)
- *   con `welcome_kit.png`, `VocalFoxWordmark`, sottotitolo e i due pulsanti "INIZIA" e "HO GIÀ UN LIVELLO / SALTA AL PERCORSO".
- * - Step 1: Configurazione lingua + partenza da zero o test di piazzamento.
- * - Step 2: Scelta diretta lingua + livello per chi ha premuto "HO GIÀ UN LIVELLO / SALTA AL PERCORSO".
- */
 @Composable
 fun OnboardingScreen(
     allPacks: Map<String, LanguagePack>,
@@ -1861,7 +1138,7 @@ fun OnboardingScreen(
     val colors = VocalFoxTheme.colors
     val isIt = systemLang == SystemLang.IT
 
-    var onboardingPhase by remember { mutableIntStateOf(0) } // 0 = Welcome Landing, 1 = Setup/Test, 2 = Direct Level Picker
+    var onboardingPhase by remember { mutableIntStateOf(0) }
     var inPlacementMode by remember { mutableStateOf(false) }
     var questionIdx by remember { mutableIntStateOf(0) }
     var correctCount by remember { mutableIntStateOf(0) }
@@ -1878,7 +1155,6 @@ fun OnboardingScreen(
     }
 
     if (onboardingPhase == 0) {
-        // SCHERMATA DI BENVENUTO ISPIRATA A DUO-1.PNG
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -1891,7 +1167,6 @@ fun OnboardingScreen(
         ) {
             Spacer(modifier = Modifier.height(24.dp))
 
-            // Blocco Centrale: welcome_kit.png + VocalFoxWordmark + Sottotitolo
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(18.dp)
@@ -1921,7 +1196,6 @@ fun OnboardingScreen(
                 )
             }
 
-            // Blocco Inferiore: 2 Pulsanti a tutta larghezza (height = 54.dp, RoundedCornerShape(16.dp))
             Column(
                 modifier = Modifier.fillMaxWidth(),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
@@ -1932,7 +1206,10 @@ fun OnboardingScreen(
                         .height(54.dp)
                         .clip(RoundedCornerShape(16.dp))
                         .background(colors.accent)
-                        .clickable { onboardingPhase = 1 },
+                        .clickable {
+                            VocalFoxSfxManager.playTileTap(context)
+                            onboardingPhase = 1
+                        },
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
@@ -1949,7 +1226,10 @@ fun OnboardingScreen(
                         .clip(RoundedCornerShape(16.dp))
                         .background(if (colors.isDark) colors.card else Color.White)
                         .border(1.5.dp, colors.hairline, RoundedCornerShape(16.dp))
-                        .clickable { onboardingPhase = 2 },
+                        .clickable {
+                            VocalFoxSfxManager.playTileTap(context)
+                            onboardingPhase = 2
+                        },
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
@@ -1964,7 +1244,6 @@ fun OnboardingScreen(
     }
 
     if (onboardingPhase == 2) {
-        // Scelta diretta di lingua e livello senza test
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -1995,7 +1274,10 @@ fun OnboardingScreen(
                                 color = if (isSelected) colors.accent else colors.hairline,
                                 shape = RoundedCornerShape(14.dp)
                             )
-                            .clickable { onSelectTargetLang(p.languageCode) }
+                            .clickable {
+                                VocalFoxSfxManager.playTileTap(context)
+                                onSelectTargetLang(p.languageCode)
+                            }
                             .padding(16.dp),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
@@ -2030,7 +1312,10 @@ fun OnboardingScreen(
                         .clip(RoundedCornerShape(14.dp))
                         .background(colors.card)
                         .border(1.dp, colors.hairline, RoundedCornerShape(14.dp))
-                        .clickable { onCompleteOnboarding(lvl) }
+                        .clickable {
+                            VocalFoxSfxManager.playUnitComplete(context)
+                            onCompleteOnboarding(lvl)
+                        }
                         .padding(18.dp),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
@@ -2097,7 +1382,10 @@ fun OnboardingScreen(
                             .clip(RoundedCornerShape(12.dp))
                             .background(if (active) colors.accent else colors.card)
                             .border(1.dp, if (active) colors.accent else colors.hairline, RoundedCornerShape(12.dp))
-                            .clickable { onSelectSystemLang(lang) }
+                            .clickable {
+                                VocalFoxSfxManager.playTileTap(context)
+                                onSelectSystemLang(lang)
+                            }
                             .padding(vertical = 14.dp),
                         contentAlignment = Alignment.Center
                     ) {
@@ -2133,7 +1421,10 @@ fun OnboardingScreen(
                                 color = if (isSelected) colors.accent else colors.hairline,
                                 shape = RoundedCornerShape(14.dp)
                             )
-                            .clickable { onSelectTargetLang(p.languageCode) }
+                            .clickable {
+                                VocalFoxSfxManager.playTileTap(context)
+                                onSelectTargetLang(p.languageCode)
+                            }
                             .padding(16.dp),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
@@ -2175,7 +1466,10 @@ fun OnboardingScreen(
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(16.dp))
                     .background(colors.accent)
-                    .clickable { onCompleteOnboarding(CefrLevel.A1) }
+                    .clickable {
+                        VocalFoxSfxManager.playUnitComplete(context)
+                        onCompleteOnboarding(CefrLevel.A1)
+                    }
                     .padding(18.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
@@ -2209,6 +1503,7 @@ fun OnboardingScreen(
                     .background(colors.card)
                     .border(1.dp, colors.hairline, RoundedCornerShape(16.dp))
                     .clickable {
+                        VocalFoxSfxManager.playTileTap(context)
                         questionIdx = 0
                         correctCount = 0
                         inPlacementMode = true
@@ -2288,7 +1583,10 @@ fun OnboardingScreen(
                                 .border(1.dp, colors.hairline, RoundedCornerShape(12.dp))
                                 .clickable {
                                     if (opt == currentQ.blankTarget) {
+                                        VocalFoxSfxManager.playSuccess(context)
                                         correctCount++
+                                    } else {
+                                        VocalFoxSfxManager.playError(context)
                                     }
                                     if (questionIdx + 1 < placementQuestions.size) {
                                         questionIdx++
@@ -2299,6 +1597,7 @@ fun OnboardingScreen(
                                             3 -> CefrLevel.B1
                                             else -> CefrLevel.B2
                                         }
+                                        VocalFoxSfxManager.playUnitComplete(context)
                                         onCompleteOnboarding(assigned)
                                     }
                                 }
@@ -2436,7 +1735,10 @@ fun GuidedLessonScreen(
                                     .clip(RoundedCornerShape(16.dp))
                                     .background(colors.card)
                                     .border(1.dp, colors.hairline, RoundedCornerShape(16.dp))
-                                    .clickable { onSpeakText(token.surface, 1.0f) }
+                                    .clickable {
+                                        VocalFoxSfxManager.playTileTap(context)
+                                        onSpeakText(token.surface, 1.0f)
+                                    }
                                     .padding(18.dp),
                                 horizontalArrangement = Arrangement.SpaceBetween,
                                 verticalAlignment = Alignment.CenterVertically
@@ -2482,7 +1784,10 @@ fun GuidedLessonScreen(
 
                         PrimaryBottomButton(
                             text = strings.continueButton,
-                            onClick = { currentStep = 1 }
+                            onClick = {
+                                VocalFoxSfxManager.playTileTap(context)
+                                currentStep = 1
+                            }
                         )
                     }
                 }
@@ -2545,6 +1850,7 @@ fun GuidedLessonScreen(
                                         .clickable {
                                             picked = option
                                             verified = false
+                                            VocalFoxSfxManager.playTileTap(context)
                                             onSpeakText(option, 1.0f)
                                         }
                                         .padding(16.dp),
@@ -2581,8 +1887,11 @@ fun GuidedLessonScreen(
                             onClick = {
                                 if (!verified && picked != null) {
                                     verified = true
+                                    if (isRight) VocalFoxSfxManager.playSuccess(context)
+                                    else VocalFoxSfxManager.playError(context)
                                     onSpeakText(ex.promptSentence.replace("___", ex.blankTarget), 1.0f)
                                 } else if (verified) {
+                                    VocalFoxSfxManager.playTileTap(context)
                                     currentStep = 2
                                 }
                             }
@@ -2619,7 +1928,10 @@ fun GuidedLessonScreen(
                                 .clip(RoundedCornerShape(16.dp))
                                 .background(colors.card)
                                 .border(1.dp, colors.hairline, RoundedCornerShape(16.dp))
-                                .clickable { onSpeakText(targetToken?.surface.orEmpty(), 1.0f) }
+                                .clickable {
+                                    VocalFoxSfxManager.playTileTap(context)
+                                    onSpeakText(targetToken?.surface.orEmpty(), 1.0f)
+                                }
                                 .padding(20.dp),
                             verticalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
@@ -2656,6 +1968,7 @@ fun GuidedLessonScreen(
                                     .background(if (selected) colors.raised else colors.card)
                                     .border(2.dp, borderCol, RoundedCornerShape(12.dp))
                                     .clickable {
+                                        VocalFoxSfxManager.playTileTap(context)
                                         pickedMeaning = mOpt
                                         verifiedMeaning = false
                                     }
@@ -2672,7 +1985,10 @@ fun GuidedLessonScreen(
                             onClick = {
                                 if (!verifiedMeaning && pickedMeaning != null) {
                                     verifiedMeaning = true
+                                    if (pickedMeaning == correctMeaning) VocalFoxSfxManager.playSuccess(context)
+                                    else VocalFoxSfxManager.playError(context)
                                 } else if (verifiedMeaning) {
+                                    VocalFoxSfxManager.playTileTap(context)
                                     currentStep = 3
                                 }
                             }
@@ -2772,6 +2088,7 @@ fun GuidedLessonScreen(
                                         .background(tileBgColor)
                                         .border(2.dp, tileBorderColor, RoundedCornerShape(10.dp))
                                         .clickable {
+                                            VocalFoxSfxManager.playTileTap(context)
                                             selectedWords.removeAt(index)
                                             checked = false
                                         }
@@ -2798,6 +2115,7 @@ fun GuidedLessonScreen(
                                         .background(if (alreadyUsed) colors.raised else colors.card)
                                         .border(1.dp, colors.hairline, RoundedCornerShape(10.dp))
                                         .clickable(enabled = !alreadyUsed) {
+                                            VocalFoxSfxManager.playTileTap(context)
                                             selectedWords.add(word)
                                             checked = false
                                             onSpeakText(word, 1.0f)
@@ -2840,8 +2158,11 @@ fun GuidedLessonScreen(
                             onClick = {
                                 if (!checked && selectedWords.isNotEmpty()) {
                                     checked = true
+                                    if (builtRight) VocalFoxSfxManager.playSuccess(context)
+                                    else VocalFoxSfxManager.playError(context)
                                     onSpeakText(targetSentence, 1.0f)
                                 } else if (checked) {
+                                    VocalFoxSfxManager.playTileTap(context)
                                     currentStep = 4
                                 }
                             }
@@ -2923,6 +2244,7 @@ fun GuidedLessonScreen(
                                     .clip(RoundedCornerShape(14.dp))
                                     .background(if (isRecording) colors.negative else colors.accent)
                                     .clickable {
+                                        VocalFoxSfxManager.playTileTap(context)
                                         if (isRecording) {
                                             onStopAndEvaluate(drill)
                                         } else {
@@ -2992,6 +2314,7 @@ fun GuidedLessonScreen(
                         PrimaryBottomButton(
                             text = strings.finishUnitButton,
                             onClick = {
+                                VocalFoxSfxManager.playUnitComplete(context)
                                 onCompleteUnit(bundle, pronunciationResult?.overallScore ?: 95)
                                 currentStep = 5
                             }
@@ -3032,6 +2355,7 @@ fun GuidedLessonScreen(
                                 .background(colors.card)
                                 .border(1.5.dp, colors.accent, RoundedCornerShape(14.dp))
                                 .clickable {
+                                    VocalFoxSfxManager.playTileTap(context)
                                     GeminiHandoffHelper.launchGeminiAppWithPrompt(
                                         context = context,
                                         targetLanguageCode = langCode,
@@ -3062,7 +2386,10 @@ fun GuidedLessonScreen(
 
                         PrimaryBottomButton(
                             text = strings.continueButton,
-                            onClick = onClose
+                            onClick = {
+                                VocalFoxSfxManager.playTileTap(context)
+                                onClose()
+                            }
                         )
                     }
                 }
@@ -3093,6 +2420,416 @@ private fun PrimaryBottomButton(
         )
     }
 }
+""",
+
+    "app/src/main/java/com/vocalfox/app/ui/screens/SettingsVoiceScreen.kt": """\
+package com.vocalfox.app.ui.screens
+
+import android.content.Context
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Check
+import androidx.compose.material.icons.outlined.VolumeUp
+import androidx.compose.material3.Icon
+import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.unit.dp
+import com.vocalfox.app.audio.VocalFoxSfxManager
+import com.vocalfox.app.data.local.VoiceModelConfigEntity
+import com.vocalfox.app.domain.model.LanguagePack
+import com.vocalfox.app.domain.model.VoicePreset
+import com.vocalfox.app.ui.i18n.SystemLang
+import com.vocalfox.app.ui.i18n.UiStrings
+import com.vocalfox.app.ui.theme.VocalFoxTheme
+import com.vocalfox.app.ui.theme.VocalFoxTokens
+import com.vocalfox.app.ui.theme.VocalFoxType
+
+@Composable
+fun SettingsVoiceScreen(
+    allPacks: Map<String, LanguagePack>,
+    voiceConfigs: List<VoiceModelConfigEntity>,
+    systemLang: SystemLang,
+    isDarkMode: Boolean,
+    strings: UiStrings,
+    onSelectSystemLang: (SystemLang) -> Unit,
+    onToggleDarkMode: (Boolean) -> Unit,
+    onSelectVoicePreset: (String, VoicePreset) -> Unit,
+    onPreviewVoice: (String, VoicePreset) -> Unit,
+    selectedTargetLangCode: String = "es",
+    onSelectTargetLang: (String) -> Unit = {}
+) {
+    val context = LocalContext.current
+    val prefs = remember { context.getSharedPreferences("vocalfox_prefs", Context.MODE_PRIVATE) }
+    var geminiApiKey by remember { mutableStateOf(prefs.getString("gemini_api_key", "").orEmpty()) }
+    var keySavedToast by remember { mutableStateOf(false) }
+    var sfxEnabled by remember { mutableStateOf(VocalFoxSfxManager.isSfxEnabled(context)) }
+
+    val colors = VocalFoxTheme.colors
+    val isIt = systemLang == SystemLang.IT
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(colors.background)
+            .verticalScroll(rememberScrollState())
+            .padding(horizontal = 20.dp, vertical = 8.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        // Active Language Course Switcher (Spanish / German)
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(VocalFoxTokens.RadiusCard))
+                .background(colors.card)
+                .border(1.dp, colors.hairline, RoundedCornerShape(VocalFoxTokens.RadiusCard))
+                .padding(18.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Text(
+                text = if (isIt) "Corso di lingua attivo" else "Active language course",
+                style = VocalFoxType.SectionTitle,
+                color = colors.primaryText
+            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                allPacks.values.forEach { pack ->
+                    val active = pack.languageCode == selectedTargetLangCode
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(if (active) colors.accent else colors.raised)
+                            .clickable {
+                                VocalFoxSfxManager.playTileTap(context)
+                                onSelectTargetLang(pack.languageCode)
+                            }
+                            .padding(vertical = 14.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = "${pack.languageCode.uppercase()} · ${pack.languageName.get(systemLang)}",
+                            style = VocalFoxType.BodyMedium,
+                            color = if (active) colors.onAccent else colors.primaryText
+                        )
+                    }
+                }
+            }
+        }
+
+        // Google Gemini Live AI API Key Configuration
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(VocalFoxTokens.RadiusCard))
+                .background(colors.card)
+                .border(1.dp, colors.hairline, RoundedCornerShape(VocalFoxTokens.RadiusCard))
+                .padding(18.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            Text(
+                text = "Google Gemini Live AI (API Key)",
+                style = VocalFoxType.SectionTitle,
+                color = colors.primaryText
+            )
+            Text(
+                text = if (isIt) "Inserisci la tua API Key di Google AI Studio per la chat integrata (catena Fail-Fast 3.8-flash -> 2.5-flash -> hydrogen)." else "Enter your Google AI Studio API Key for in-app chat (Fail-Fast chain 3.8-flash -> 2.5-flash -> hydrogen).",
+                style = VocalFoxType.SecondaryCaption,
+                color = colors.secondaryText
+            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(colors.raised)
+                        .padding(horizontal = 12.dp, vertical = 12.dp)
+                ) {
+                    if (geminiApiKey.isEmpty()) {
+                        Text("AIzaSy...", style = VocalFoxType.MetaMono, color = colors.mutedText)
+                    }
+                    BasicTextField(
+                        value = geminiApiKey,
+                        onValueChange = {
+                            geminiApiKey = it
+                            keySavedToast = false
+                        },
+                        textStyle = VocalFoxType.MetaMono.copy(color = colors.primaryText),
+                        cursorBrush = SolidColor(colors.accent),
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(colors.accent)
+                        .clickable {
+                            prefs.edit().putString("gemini_api_key", geminiApiKey.trim()).apply()
+                            keySavedToast = true
+                            VocalFoxSfxManager.playSuccess(context)
+                        }
+                        .padding(horizontal = 16.dp, vertical = 12.dp)
+                ) {
+                    Text(
+                        text = if (keySavedToast) "Salvata ✓" else (if (isIt) "Salva" else "Save"),
+                        style = VocalFoxType.BodyMedium,
+                        color = colors.onAccent
+                    )
+                }
+            }
+        }
+
+        // System UI Language Switcher
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(VocalFoxTokens.RadiusCard))
+                .background(colors.card)
+                .border(1.dp, colors.hairline, RoundedCornerShape(VocalFoxTokens.RadiusCard))
+                .padding(18.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Text(
+                text = strings.systemLanguageSection,
+                style = VocalFoxType.SectionTitle,
+                color = colors.primaryText
+            )
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                SystemLang.entries.forEach { lang ->
+                    val isSelected = lang == systemLang
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(if (isSelected) colors.accent else colors.raised)
+                            .clickable {
+                                VocalFoxSfxManager.playTileTap(context)
+                                onSelectSystemLang(lang)
+                            }
+                            .padding(vertical = 12.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = lang.displayName,
+                            style = VocalFoxType.BodyMedium,
+                            color = if (isSelected) colors.onAccent else colors.primaryText
+                        )
+                    }
+                }
+            }
+        }
+
+        // Dark Mode Toggle
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(VocalFoxTokens.RadiusCard))
+                .background(colors.card)
+                .border(1.dp, colors.hairline, RoundedCornerShape(VocalFoxTokens.RadiusCard))
+                .padding(horizontal = 18.dp, vertical = 14.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text(
+                    text = strings.appearanceSection,
+                    style = VocalFoxType.SectionTitle,
+                    color = colors.primaryText
+                )
+                Text(
+                    text = strings.darkModeLabel,
+                    style = VocalFoxType.SecondaryCaption,
+                    color = colors.secondaryText
+                )
+            }
+            Switch(
+                checked = isDarkMode,
+                onCheckedChange = {
+                    VocalFoxSfxManager.playTileTap(context)
+                    onToggleDarkMode(it)
+                },
+                colors = SwitchDefaults.colors(
+                    checkedThumbColor = colors.onAccent,
+                    checkedTrackColor = colors.accent
+                )
+            )
+        }
+
+        // Procedural Sound Effects (SFX) Toggle
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(VocalFoxTokens.RadiusCard))
+                .background(colors.card)
+                .border(1.dp, colors.hairline, RoundedCornerShape(VocalFoxTokens.RadiusCard))
+                .padding(horizontal = 18.dp, vertical = 14.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text(
+                    text = if (isIt) "Effetti sonori (SFX)" else "Sound effects (SFX)",
+                    style = VocalFoxType.SectionTitle,
+                    color = colors.primaryText
+                )
+                Text(
+                    text = if (isIt) "Suoni di feedback per risposte, bottoni e chat" else "Feedback sounds for answers, tiles, and chat",
+                    style = VocalFoxType.SecondaryCaption,
+                    color = colors.secondaryText
+                )
+            }
+            Switch(
+                checked = sfxEnabled,
+                onCheckedChange = { enabled ->
+                    sfxEnabled = enabled
+                    VocalFoxSfxManager.setSfxEnabled(context, enabled)
+                },
+                colors = SwitchDefaults.colors(
+                    checkedThumbColor = colors.onAccent,
+                    checkedTrackColor = colors.accent
+                )
+            )
+        }
+
+        // Clean Teacher Voice Picker
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(VocalFoxTokens.RadiusCard))
+                .background(colors.card)
+                .border(1.dp, colors.hairline, RoundedCornerShape(VocalFoxTokens.RadiusCard))
+                .padding(18.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp)
+        ) {
+            Text(
+                text = strings.voiceModelsSection,
+                style = VocalFoxType.SectionTitle,
+                color = colors.primaryText
+            )
+
+            allPacks.values.forEach { pack ->
+                val activeVoiceId = voiceConfigs
+                    .firstOrNull { it.languageCode == pack.languageCode }
+                    ?.selectedVoiceId
+                    ?: pack.availableVoices.first().voiceId
+
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Text(
+                        text = pack.languageName.get(systemLang),
+                        style = VocalFoxType.BodyMedium,
+                        color = colors.accent
+                    )
+
+                    pack.availableVoices.forEach { preset ->
+                        val isSelected = preset.voiceId == activeVoiceId
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(if (isSelected) colors.raised else colors.background)
+                                .border(
+                                    width = if (isSelected) 1.5.dp else 1.dp,
+                                    color = if (isSelected) colors.accent else colors.hairline,
+                                    shape = RoundedCornerShape(12.dp)
+                                )
+                                .clickable {
+                                    VocalFoxSfxManager.playTileTap(context)
+                                    onSelectVoicePreset(pack.languageCode, preset)
+                                }
+                                .padding(14.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                                Text(
+                                    text = preset.displayName,
+                                    style = VocalFoxType.BodyMedium,
+                                    color = colors.primaryText
+                                )
+                                Text(
+                                    text = "${preset.gender} · ${preset.timbre}",
+                                    style = VocalFoxType.SecondaryCaption,
+                                    color = colors.secondaryText
+                                )
+                            }
+
+                            Row(
+                                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .clip(RoundedCornerShape(8.dp))
+                                        .background(colors.card)
+                                        .border(1.dp, colors.hairline, RoundedCornerShape(8.dp))
+                                        .clickable { onPreviewVoice(pack.languageCode, preset) }
+                                        .padding(8.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Outlined.VolumeUp,
+                                        contentDescription = strings.previewVoiceAction,
+                                        tint = colors.primaryText,
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                }
+                                if (isSelected) {
+                                    Icon(
+                                        imageVector = Icons.Outlined.Check,
+                                        contentDescription = null,
+                                        tint = colors.accent,
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(110.dp))
+    }
+}
 """
 }
 
@@ -3120,7 +2857,7 @@ def main() -> None:
         print("[ERRORE] Non riesco a trovare settings.gradle.kts!")
         return
 
-    print(f"[Vocalfox Patch] Applicazione 5 aggiornamenti su:\n  {root}\n")
+    print(f"[Vocalfox Patch] Applicazione aggiornamenti su:\n  {root}\n")
 
     for rel_path, content in FILES.items():
         target = root / rel_path
@@ -3128,30 +2865,13 @@ def main() -> None:
         target.write_text(content, encoding="utf-8")
         print(f"  + Aggiornato: {rel_path}")
 
-    drawable_dir = root / "app/src/main/res/drawable-nodpi"
-    drawable_dir.mkdir(parents=True, exist_ok=True)
-
-    for asset_name in [
-        "welcome_kit.png",
-        "vocalfox_text.png",
-        "vocalfox.png",
-        "splash_screen.webp",
-    ]:
-        src_candidate = root / asset_name
-        dst_candidate = drawable_dir / asset_name
-        if src_candidate.exists() and src_candidate.resolve() != dst_candidate.resolve():
-            shutil.copy2(src_candidate, dst_candidate)
-            print(f"  + Copiato asset: {asset_name} -> app/src/main/res/drawable-nodpi/{asset_name}")
-
     print("\n========================================================")
-    print("PATCH VOCALFOX COMPLETATA CON SUCCESSO!")
-    print("Assicurati che welcome_kit.png sia dentro:")
-    print("  app/src/main/res/drawable-nodpi/welcome_kit.png")
-    print("Poi esegui:")
+    print("PATCH APPLICATA CON SUCCESSO!")
+    print("Esegui ora:")
     print("========================================================\n")
     print(f'cd "{root}"')
     print("git add -A")
-    print('git commit -m "Feat: Update to gemini-3.8-flash, persist language prefs, black splash & welcome screen"')
+    print('git commit -m "Feat: Add Fail-Fast Gemini Sticky fallback chain & procedural offline SFX engine"')
     print("git push origin main")
 
 

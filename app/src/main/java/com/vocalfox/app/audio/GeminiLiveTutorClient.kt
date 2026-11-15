@@ -20,10 +20,75 @@ data class TutorChatMessage(
 )
 
 /**
- * Direct REST client for Google Gemini Live AI Conversation Tutor.
- * Uses `models/gemini-3.8-flash` primarily, with automatic fallback to `models/gemini-2.5-flash` on 404.
+ * Client Live AI Ultra-Veloce con Fail-Fast (connectTimeout = 2500ms, readTimeout = 5000ms, 0ms delay),
+ * Sticky Session Cache in memoria e catena di fallback a 4 livelli:
+ * 1. gemini-3.8-flash
+ * 2. gemini-2.5-flash
+ * 3. gemini-2.5-flash-lite
+ * 4. gemini-4-hydrogen (con risoluzione dinamica dell'eventuale modello "hydrogen" disponibile per la chiave).
  */
 object GeminiLiveTutorClient {
+
+    private const val CONNECT_TIMEOUT_MS = 2500
+    private const val READ_TIMEOUT_MS = 5000
+
+    @Volatile
+    private var stickyModel: String? = null
+
+    @Volatile
+    private var resolvedHydrogenModel: String = "gemini-4-hydrogen"
+
+    @Volatile
+    private var hasCheckedModelsList: Boolean = false
+
+    /**
+     * Pre-check asincrono silenzioso chiamato all'apertura di LiveConversationScreen
+     * per individuare l'eventuale nome esatto del modello contenente "hydrogen" associato all'API key.
+     */
+    suspend fun preCheckHydrogenModelAsync(apiKey: String) = withContext(Dispatchers.IO) {
+        val cleanKey = apiKey.trim()
+        if (cleanKey.isBlank() || hasCheckedModelsList) return@withContext
+        hasCheckedModelsList = true
+
+        try {
+            val endpoint = "https://generativelanguage.googleapis.com/v1beta/models?key=$cleanKey"
+            val conn = (URL(endpoint).openConnection() as HttpURLConnection).apply {
+                requestMethod = "GET"
+                connectTimeout = CONNECT_TIMEOUT_MS
+                readTimeout = READ_TIMEOUT_MS
+            }
+            if (conn.responseCode in 200..299) {
+                val raw = BufferedReader(InputStreamReader(conn.inputStream, Charsets.UTF_8)).use { it.readText() }
+                val root = JSONObject(raw)
+                val modelsArr = root.optJSONArray("models") ?: return@withContext
+                for (i in 0 until modelsArr.length()) {
+                    val mObj = modelsArr.optJSONObject(i) ?: continue
+                    val rawName = mObj.optString("name", "").removePrefix("models/")
+                    if (rawName.contains("hydrogen", ignoreCase = true)) {
+                        resolvedHydrogenModel = rawName
+                        break
+                    }
+                }
+            }
+        } catch (_: Throwable) {
+            // Silenzioso: mantiene il fallback predefinito "gemini-4-hydrogen"
+        }
+    }
+
+    private fun buildOrderedModelChain(): List<String> {
+        val baseChain = listOf(
+            "gemini-3.8-flash",
+            "gemini-2.5-flash",
+            "gemini-2.5-flash-lite",
+            resolvedHydrogenModel
+        )
+        val currentSticky = stickyModel
+        return if (!currentSticky.isNullOrBlank()) {
+            listOf(currentSticky) + baseChain.filterNot { it.equals(currentSticky, ignoreCase = true) }
+        } else {
+            baseChain.distinct()
+        }
+    }
 
     suspend fun sendMessageToTutor(
         apiKey: String,
@@ -36,7 +101,12 @@ object GeminiLiveTutorClient {
     ): Result<TutorChatMessage> = withContext(Dispatchers.IO) {
         val cleanKey = apiKey.trim()
         if (cleanKey.isBlank()) {
-            return@withContext Result.failure(IllegalArgumentException("API Key mancante"))
+            val msg = if (systemLang == SystemLang.IT) {
+                "Inserisci la tua chiave API Gemini nella scheda Profilo o usa il pulsante ✨ in alto."
+            } else {
+                "Enter your Gemini API Key in the Profile tab or tap the ✨ button above."
+            }
+            return@withContext Result.failure(IllegalArgumentException(msg))
         }
 
         val targetLangName = if (targetLanguageCode == "de") "German (Deutsch)" else "Spanish (Español)"
@@ -71,7 +141,7 @@ object GeminiLiveTutorClient {
                 .put("parts", JSONArray().put(userPart))
         )
 
-        val payload = JSONObject().apply {
+        val payloadString = JSONObject().apply {
             put(
                 "system_instruction",
                 JSONObject().put("parts", JSONArray().put(JSONObject().put("text", systemInstruction)))
@@ -83,24 +153,24 @@ object GeminiLiveTutorClient {
                     .put("temperature", 0.7)
                     .put("responseMimeType", "application/json")
             )
-        }
+        }.toString()
 
-        val modelsToTry = listOf("gemini-3.8-flash", "gemini-2.5-flash")
-        var lastError: Throwable? = null
+        val modelsChain = buildOrderedModelChain()
+        var encounteredAuthKeyError = false
 
-        for (modelName in modelsToTry) {
+        for (modelName in modelsChain) {
             try {
                 val endpoint = "https://generativelanguage.googleapis.com/v1beta/models/$modelName:generateContent?key=$cleanKey"
                 val conn = (URL(endpoint).openConnection() as HttpURLConnection).apply {
                     requestMethod = "POST"
-                    connectTimeout = 15000
-                    readTimeout = 20000
+                    connectTimeout = CONNECT_TIMEOUT_MS
+                    readTimeout = READ_TIMEOUT_MS
                     doOutput = true
                     setRequestProperty("Content-Type", "application/json; charset=UTF-8")
                 }
 
                 OutputStreamWriter(conn.outputStream, Charsets.UTF_8).use { writer ->
-                    writer.write(payload.toString())
+                    writer.write(payloadString)
                 }
 
                 val code = conn.responseCode
@@ -126,6 +196,9 @@ object GeminiLiveTutorClient {
                         .trim()
 
                     val parsed = JSONObject(textOut)
+                    // Memorizza questo modello come Sticky Model per i messaggi successivi
+                    stickyModel = modelName
+
                     return@withContext Result.success(
                         TutorChatMessage(
                             isUser = false,
@@ -135,15 +208,42 @@ object GeminiLiveTutorClient {
                         )
                     )
                 } else {
-                    lastError = RuntimeException("HTTP $code: $rawResponse")
-                    // If 404 Not Found on primary model, loop continues to fallback model
-                    if (code != 404) break
+                    // Se lo stickyModel ha fallito (503, 429, 404, 500), resettalo e passa con 0ms di attesa al modello successivo
+                    if (stickyModel == modelName) {
+                        stickyModel = null
+                    }
+                    if (code == 400 || code == 403) {
+                        if (rawResponse.contains("API_KEY_INVALID", ignoreCase = true) ||
+                            rawResponse.contains("API key not valid", ignoreCase = true)
+                        ) {
+                            encounteredAuthKeyError = true
+                            break
+                        }
+                    }
+                    // Continua immediatamente al prossimo modello della catena (0ms delay)
                 }
-            } catch (e: Throwable) {
-                lastError = e
+            } catch (_: Throwable) {
+                // SocketTimeoutException / IOException: resetta lo stickyModel e passa subito al modello successivo
+                if (stickyModel == modelName) {
+                    stickyModel = null
+                }
             }
         }
 
-        Result.failure(lastError ?: RuntimeException("Errore di connessione a Gemini API"))
+        val friendlyMessage = if (encounteredAuthKeyError) {
+            if (systemLang == SystemLang.IT) {
+                "La chiave API Gemini inserita nel Profilo non è valida. Controllala o usa il pulsante ✨ in alto."
+            } else {
+                "The Gemini API key in Profile is invalid. Please check it or tap the ✨ button above."
+            }
+        } else {
+            if (systemLang == SystemLang.IT) {
+                "Tutti i modelli AI sono momentaneamente occupati, riprova tra pochi secondi oppure tocca ✨ in alto per usare l'app Gemini."
+            } else {
+                "All AI models are currently busy, please try again in a few seconds or tap ✨ above to use the Gemini app."
+            }
+        }
+
+        Result.failure(RuntimeException(friendlyMessage))
     }
 }

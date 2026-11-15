@@ -36,6 +36,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import com.vocalfox.app.audio.VocalFoxSfxManager
 import com.vocalfox.app.data.local.VoiceModelConfigEntity
 import com.vocalfox.app.domain.model.LanguagePack
 import com.vocalfox.app.domain.model.VoicePreset
@@ -63,6 +64,7 @@ fun SettingsVoiceScreen(
     val prefs = remember { context.getSharedPreferences("vocalfox_prefs", Context.MODE_PRIVATE) }
     var geminiApiKey by remember { mutableStateOf(prefs.getString("gemini_api_key", "").orEmpty()) }
     var keySavedToast by remember { mutableStateOf(false) }
+    var sfxEnabled by remember { mutableStateOf(VocalFoxSfxManager.isSfxEnabled(context)) }
 
     val colors = VocalFoxTheme.colors
     val isIt = systemLang == SystemLang.IT
@@ -101,7 +103,10 @@ fun SettingsVoiceScreen(
                             .weight(1f)
                             .clip(RoundedCornerShape(12.dp))
                             .background(if (active) colors.accent else colors.raised)
-                            .clickable { onSelectTargetLang(pack.languageCode) }
+                            .clickable {
+                                VocalFoxSfxManager.playTileTap(context)
+                                onSelectTargetLang(pack.languageCode)
+                            }
                             .padding(vertical = 14.dp),
                         contentAlignment = Alignment.Center
                     ) {
@@ -131,7 +136,7 @@ fun SettingsVoiceScreen(
                 color = colors.primaryText
             )
             Text(
-                text = if (isIt) "Inserisci la tua API Key di Google AI Studio per conversare dal vivo col tutor VocalFox." else "Enter your Google AI Studio API Key to enable Live AI Conversation.",
+                text = if (isIt) "Inserisci la tua API Key di Google AI Studio per la chat integrata (catena Fail-Fast 3.8-flash -> 2.5-flash -> hydrogen)." else "Enter your Google AI Studio API Key for in-app chat (Fail-Fast chain 3.8-flash -> 2.5-flash -> hydrogen).",
                 style = VocalFoxType.SecondaryCaption,
                 color = colors.secondaryText
             )
@@ -169,6 +174,7 @@ fun SettingsVoiceScreen(
                         .clickable {
                             prefs.edit().putString("gemini_api_key", geminiApiKey.trim()).apply()
                             keySavedToast = true
+                            VocalFoxSfxManager.playSuccess(context)
                         }
                         .padding(horizontal = 16.dp, vertical = 12.dp)
                 ) {
@@ -208,7 +214,10 @@ fun SettingsVoiceScreen(
                             .weight(1f)
                             .clip(RoundedCornerShape(12.dp))
                             .background(if (isSelected) colors.accent else colors.raised)
-                            .clickable { onSelectSystemLang(lang) }
+                            .clickable {
+                                VocalFoxSfxManager.playTileTap(context)
+                                onSelectSystemLang(lang)
+                            }
                             .padding(vertical = 12.dp),
                         contentAlignment = Alignment.Center
                     ) {
@@ -247,7 +256,46 @@ fun SettingsVoiceScreen(
             }
             Switch(
                 checked = isDarkMode,
-                onCheckedChange = onToggleDarkMode,
+                onCheckedChange = {
+                    VocalFoxSfxManager.playTileTap(context)
+                    onToggleDarkMode(it)
+                },
+                colors = SwitchDefaults.colors(
+                    checkedThumbColor = colors.onAccent,
+                    checkedTrackColor = colors.accent
+                )
+            )
+        }
+
+        // Procedural Sound Effects (SFX) Toggle
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(VocalFoxTokens.RadiusCard))
+                .background(colors.card)
+                .border(1.dp, colors.hairline, RoundedCornerShape(VocalFoxTokens.RadiusCard))
+                .padding(horizontal = 18.dp, vertical = 14.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text(
+                    text = if (isIt) "Effetti sonori (SFX)" else "Sound effects (SFX)",
+                    style = VocalFoxType.SectionTitle,
+                    color = colors.primaryText
+                )
+                Text(
+                    text = if (isIt) "Suoni di feedback per risposte, bottoni e chat" else "Feedback sounds for answers, tiles, and chat",
+                    style = VocalFoxType.SecondaryCaption,
+                    color = colors.secondaryText
+                )
+            }
+            Switch(
+                checked = sfxEnabled,
+                onCheckedChange = { enabled ->
+                    sfxEnabled = enabled
+                    VocalFoxSfxManager.setSfxEnabled(context, enabled)
+                },
                 colors = SwitchDefaults.colors(
                     checkedThumbColor = colors.onAccent,
                     checkedTrackColor = colors.accent
@@ -299,7 +347,10 @@ fun SettingsVoiceScreen(
                                     color = if (isSelected) colors.accent else colors.hairline,
                                     shape = RoundedCornerShape(12.dp)
                                 )
-                                .clickable { onSelectVoicePreset(pack.languageCode, preset) }
+                                .clickable {
+                                    VocalFoxSfxManager.playTileTap(context)
+                                    onSelectVoicePreset(pack.languageCode, preset)
+                                }
                                 .padding(14.dp),
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically

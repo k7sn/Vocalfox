@@ -65,6 +65,7 @@ import androidx.core.content.ContextCompat
 import com.vocalfox.app.audio.GeminiHandoffHelper
 import com.vocalfox.app.audio.PhonemeAccuracyStatus
 import com.vocalfox.app.audio.PronunciationResult
+import com.vocalfox.app.audio.VocalFoxSfxManager
 import com.vocalfox.app.domain.model.CefrLevel
 import com.vocalfox.app.domain.model.GrammarSyntaxExercise
 import com.vocalfox.app.domain.model.LanguagePack
@@ -96,10 +97,6 @@ data class GuidedUnitBundle(
     val pronunciationDrill: PronunciationDrill
 )
 
-/**
- * Splash Screen con sfondo Nero Puro (#000000) così il riquadro nero dell'animazione WebP
- * si fonde alla perfezione ("blend in") senza alcun bordo visibile, seguito dal logotipo Vocalfox.
- */
 @Composable
 fun SplashScreenOverlay(
     onFinished: () -> Unit
@@ -121,13 +118,6 @@ fun SplashScreenOverlay(
     }
 }
 
-/**
- * Primo Avvio:
- * - Step 0: Schermata di Benvenuto in stile Duolingo (`6230cce907f5a532aa4b175e_5d38993213523202613a6180_Duo-1.png`)
- *   con `welcome_kit.png`, `VocalFoxWordmark`, sottotitolo e i due pulsanti "INIZIA" e "HO GIÀ UN LIVELLO / SALTA AL PERCORSO".
- * - Step 1: Configurazione lingua + partenza da zero o test di piazzamento.
- * - Step 2: Scelta diretta lingua + livello per chi ha premuto "HO GIÀ UN LIVELLO / SALTA AL PERCORSO".
- */
 @Composable
 fun OnboardingScreen(
     allPacks: Map<String, LanguagePack>,
@@ -142,7 +132,7 @@ fun OnboardingScreen(
     val colors = VocalFoxTheme.colors
     val isIt = systemLang == SystemLang.IT
 
-    var onboardingPhase by remember { mutableIntStateOf(0) } // 0 = Welcome Landing, 1 = Setup/Test, 2 = Direct Level Picker
+    var onboardingPhase by remember { mutableIntStateOf(0) }
     var inPlacementMode by remember { mutableStateOf(false) }
     var questionIdx by remember { mutableIntStateOf(0) }
     var correctCount by remember { mutableIntStateOf(0) }
@@ -159,7 +149,6 @@ fun OnboardingScreen(
     }
 
     if (onboardingPhase == 0) {
-        // SCHERMATA DI BENVENUTO ISPIRATA A DUO-1.PNG
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -172,7 +161,6 @@ fun OnboardingScreen(
         ) {
             Spacer(modifier = Modifier.height(24.dp))
 
-            // Blocco Centrale: welcome_kit.png + VocalFoxWordmark + Sottotitolo
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(18.dp)
@@ -202,7 +190,6 @@ fun OnboardingScreen(
                 )
             }
 
-            // Blocco Inferiore: 2 Pulsanti a tutta larghezza (height = 54.dp, RoundedCornerShape(16.dp))
             Column(
                 modifier = Modifier.fillMaxWidth(),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
@@ -213,7 +200,10 @@ fun OnboardingScreen(
                         .height(54.dp)
                         .clip(RoundedCornerShape(16.dp))
                         .background(colors.accent)
-                        .clickable { onboardingPhase = 1 },
+                        .clickable {
+                            VocalFoxSfxManager.playTileTap(context)
+                            onboardingPhase = 1
+                        },
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
@@ -230,7 +220,10 @@ fun OnboardingScreen(
                         .clip(RoundedCornerShape(16.dp))
                         .background(if (colors.isDark) colors.card else Color.White)
                         .border(1.5.dp, colors.hairline, RoundedCornerShape(16.dp))
-                        .clickable { onboardingPhase = 2 },
+                        .clickable {
+                            VocalFoxSfxManager.playTileTap(context)
+                            onboardingPhase = 2
+                        },
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
@@ -245,7 +238,6 @@ fun OnboardingScreen(
     }
 
     if (onboardingPhase == 2) {
-        // Scelta diretta di lingua e livello senza test
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -276,7 +268,10 @@ fun OnboardingScreen(
                                 color = if (isSelected) colors.accent else colors.hairline,
                                 shape = RoundedCornerShape(14.dp)
                             )
-                            .clickable { onSelectTargetLang(p.languageCode) }
+                            .clickable {
+                                VocalFoxSfxManager.playTileTap(context)
+                                onSelectTargetLang(p.languageCode)
+                            }
                             .padding(16.dp),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
@@ -311,7 +306,10 @@ fun OnboardingScreen(
                         .clip(RoundedCornerShape(14.dp))
                         .background(colors.card)
                         .border(1.dp, colors.hairline, RoundedCornerShape(14.dp))
-                        .clickable { onCompleteOnboarding(lvl) }
+                        .clickable {
+                            VocalFoxSfxManager.playUnitComplete(context)
+                            onCompleteOnboarding(lvl)
+                        }
                         .padding(18.dp),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
@@ -378,7 +376,10 @@ fun OnboardingScreen(
                             .clip(RoundedCornerShape(12.dp))
                             .background(if (active) colors.accent else colors.card)
                             .border(1.dp, if (active) colors.accent else colors.hairline, RoundedCornerShape(12.dp))
-                            .clickable { onSelectSystemLang(lang) }
+                            .clickable {
+                                VocalFoxSfxManager.playTileTap(context)
+                                onSelectSystemLang(lang)
+                            }
                             .padding(vertical = 14.dp),
                         contentAlignment = Alignment.Center
                     ) {
@@ -414,7 +415,10 @@ fun OnboardingScreen(
                                 color = if (isSelected) colors.accent else colors.hairline,
                                 shape = RoundedCornerShape(14.dp)
                             )
-                            .clickable { onSelectTargetLang(p.languageCode) }
+                            .clickable {
+                                VocalFoxSfxManager.playTileTap(context)
+                                onSelectTargetLang(p.languageCode)
+                            }
                             .padding(16.dp),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
@@ -456,7 +460,10 @@ fun OnboardingScreen(
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(16.dp))
                     .background(colors.accent)
-                    .clickable { onCompleteOnboarding(CefrLevel.A1) }
+                    .clickable {
+                        VocalFoxSfxManager.playUnitComplete(context)
+                        onCompleteOnboarding(CefrLevel.A1)
+                    }
                     .padding(18.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
@@ -490,6 +497,7 @@ fun OnboardingScreen(
                     .background(colors.card)
                     .border(1.dp, colors.hairline, RoundedCornerShape(16.dp))
                     .clickable {
+                        VocalFoxSfxManager.playTileTap(context)
                         questionIdx = 0
                         correctCount = 0
                         inPlacementMode = true
@@ -569,7 +577,10 @@ fun OnboardingScreen(
                                 .border(1.dp, colors.hairline, RoundedCornerShape(12.dp))
                                 .clickable {
                                     if (opt == currentQ.blankTarget) {
+                                        VocalFoxSfxManager.playSuccess(context)
                                         correctCount++
+                                    } else {
+                                        VocalFoxSfxManager.playError(context)
                                     }
                                     if (questionIdx + 1 < placementQuestions.size) {
                                         questionIdx++
@@ -580,6 +591,7 @@ fun OnboardingScreen(
                                             3 -> CefrLevel.B1
                                             else -> CefrLevel.B2
                                         }
+                                        VocalFoxSfxManager.playUnitComplete(context)
                                         onCompleteOnboarding(assigned)
                                     }
                                 }
@@ -717,7 +729,10 @@ fun GuidedLessonScreen(
                                     .clip(RoundedCornerShape(16.dp))
                                     .background(colors.card)
                                     .border(1.dp, colors.hairline, RoundedCornerShape(16.dp))
-                                    .clickable { onSpeakText(token.surface, 1.0f) }
+                                    .clickable {
+                                        VocalFoxSfxManager.playTileTap(context)
+                                        onSpeakText(token.surface, 1.0f)
+                                    }
                                     .padding(18.dp),
                                 horizontalArrangement = Arrangement.SpaceBetween,
                                 verticalAlignment = Alignment.CenterVertically
@@ -763,7 +778,10 @@ fun GuidedLessonScreen(
 
                         PrimaryBottomButton(
                             text = strings.continueButton,
-                            onClick = { currentStep = 1 }
+                            onClick = {
+                                VocalFoxSfxManager.playTileTap(context)
+                                currentStep = 1
+                            }
                         )
                     }
                 }
@@ -826,6 +844,7 @@ fun GuidedLessonScreen(
                                         .clickable {
                                             picked = option
                                             verified = false
+                                            VocalFoxSfxManager.playTileTap(context)
                                             onSpeakText(option, 1.0f)
                                         }
                                         .padding(16.dp),
@@ -862,8 +881,11 @@ fun GuidedLessonScreen(
                             onClick = {
                                 if (!verified && picked != null) {
                                     verified = true
+                                    if (isRight) VocalFoxSfxManager.playSuccess(context)
+                                    else VocalFoxSfxManager.playError(context)
                                     onSpeakText(ex.promptSentence.replace("___", ex.blankTarget), 1.0f)
                                 } else if (verified) {
+                                    VocalFoxSfxManager.playTileTap(context)
                                     currentStep = 2
                                 }
                             }
@@ -900,7 +922,10 @@ fun GuidedLessonScreen(
                                 .clip(RoundedCornerShape(16.dp))
                                 .background(colors.card)
                                 .border(1.dp, colors.hairline, RoundedCornerShape(16.dp))
-                                .clickable { onSpeakText(targetToken?.surface.orEmpty(), 1.0f) }
+                                .clickable {
+                                    VocalFoxSfxManager.playTileTap(context)
+                                    onSpeakText(targetToken?.surface.orEmpty(), 1.0f)
+                                }
                                 .padding(20.dp),
                             verticalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
@@ -937,6 +962,7 @@ fun GuidedLessonScreen(
                                     .background(if (selected) colors.raised else colors.card)
                                     .border(2.dp, borderCol, RoundedCornerShape(12.dp))
                                     .clickable {
+                                        VocalFoxSfxManager.playTileTap(context)
                                         pickedMeaning = mOpt
                                         verifiedMeaning = false
                                     }
@@ -953,7 +979,10 @@ fun GuidedLessonScreen(
                             onClick = {
                                 if (!verifiedMeaning && pickedMeaning != null) {
                                     verifiedMeaning = true
+                                    if (pickedMeaning == correctMeaning) VocalFoxSfxManager.playSuccess(context)
+                                    else VocalFoxSfxManager.playError(context)
                                 } else if (verifiedMeaning) {
+                                    VocalFoxSfxManager.playTileTap(context)
                                     currentStep = 3
                                 }
                             }
@@ -1053,6 +1082,7 @@ fun GuidedLessonScreen(
                                         .background(tileBgColor)
                                         .border(2.dp, tileBorderColor, RoundedCornerShape(10.dp))
                                         .clickable {
+                                            VocalFoxSfxManager.playTileTap(context)
                                             selectedWords.removeAt(index)
                                             checked = false
                                         }
@@ -1079,6 +1109,7 @@ fun GuidedLessonScreen(
                                         .background(if (alreadyUsed) colors.raised else colors.card)
                                         .border(1.dp, colors.hairline, RoundedCornerShape(10.dp))
                                         .clickable(enabled = !alreadyUsed) {
+                                            VocalFoxSfxManager.playTileTap(context)
                                             selectedWords.add(word)
                                             checked = false
                                             onSpeakText(word, 1.0f)
@@ -1121,8 +1152,11 @@ fun GuidedLessonScreen(
                             onClick = {
                                 if (!checked && selectedWords.isNotEmpty()) {
                                     checked = true
+                                    if (builtRight) VocalFoxSfxManager.playSuccess(context)
+                                    else VocalFoxSfxManager.playError(context)
                                     onSpeakText(targetSentence, 1.0f)
                                 } else if (checked) {
+                                    VocalFoxSfxManager.playTileTap(context)
                                     currentStep = 4
                                 }
                             }
@@ -1204,6 +1238,7 @@ fun GuidedLessonScreen(
                                     .clip(RoundedCornerShape(14.dp))
                                     .background(if (isRecording) colors.negative else colors.accent)
                                     .clickable {
+                                        VocalFoxSfxManager.playTileTap(context)
                                         if (isRecording) {
                                             onStopAndEvaluate(drill)
                                         } else {
@@ -1273,6 +1308,7 @@ fun GuidedLessonScreen(
                         PrimaryBottomButton(
                             text = strings.finishUnitButton,
                             onClick = {
+                                VocalFoxSfxManager.playUnitComplete(context)
                                 onCompleteUnit(bundle, pronunciationResult?.overallScore ?: 95)
                                 currentStep = 5
                             }
@@ -1313,6 +1349,7 @@ fun GuidedLessonScreen(
                                 .background(colors.card)
                                 .border(1.5.dp, colors.accent, RoundedCornerShape(14.dp))
                                 .clickable {
+                                    VocalFoxSfxManager.playTileTap(context)
                                     GeminiHandoffHelper.launchGeminiAppWithPrompt(
                                         context = context,
                                         targetLanguageCode = langCode,
@@ -1343,7 +1380,10 @@ fun GuidedLessonScreen(
 
                         PrimaryBottomButton(
                             text = strings.continueButton,
-                            onClick = onClose
+                            onClick = {
+                                VocalFoxSfxManager.playTileTap(context)
+                                onClose()
+                            }
                         )
                     }
                 }

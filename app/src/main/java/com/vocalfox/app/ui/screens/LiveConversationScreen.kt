@@ -38,6 +38,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
@@ -53,6 +54,7 @@ import androidx.compose.ui.unit.dp
 import com.vocalfox.app.audio.GeminiHandoffHelper
 import com.vocalfox.app.audio.GeminiLiveTutorClient
 import com.vocalfox.app.audio.TutorChatMessage
+import com.vocalfox.app.audio.VocalFoxSfxManager
 import com.vocalfox.app.domain.model.CefrLevel
 import com.vocalfox.app.domain.model.LanguagePack
 import com.vocalfox.app.ui.i18n.SystemLang
@@ -76,6 +78,12 @@ fun LiveConversationScreen(
     val colors = VocalFoxTheme.colors
     val scope = rememberCoroutineScope()
     val isIt = systemLang == SystemLang.IT
+
+    // Pre-check asincrono silenzioso all'apertura di Live AI per risolvere eventuale modello Hydrogen
+    LaunchedEffect(Unit) {
+        val currentKey = prefs.getString("gemini_api_key", "").orEmpty()
+        GeminiLiveTutorClient.preCheckHydrogenModelAsync(currentKey)
+    }
 
     val scenarios = remember(isIt) {
         if (isIt) {
@@ -127,6 +135,7 @@ fun LiveConversationScreen(
         if (trimmed.isBlank() || isLoading) return
         val currentApiKey = prefs.getString("gemini_api_key", "").orEmpty().trim()
         if (currentApiKey.isBlank()) {
+            VocalFoxSfxManager.playError(context)
             errorMessage = if (isIt) {
                 "Per chattare qui inserisci la tua API Key nella scheda Profilo, oppure tocca l'icona ✨ in alto a destra per parlare subito nell'app Gemini."
             } else {
@@ -136,6 +145,7 @@ fun LiveConversationScreen(
         }
 
         errorMessage = null
+        VocalFoxSfxManager.playChatPop(context)
         messages.add(TutorChatMessage(isUser = true, text = trimmed))
         userInput = ""
         isLoading = true
@@ -152,10 +162,16 @@ fun LiveConversationScreen(
             )
             isLoading = false
             res.onSuccess { replyMsg ->
+                VocalFoxSfxManager.playChatPop(context)
                 messages.add(replyMsg)
                 onSpeakText(replyMsg.text, 1.0f)
             }.onFailure { err ->
-                errorMessage = err.localizedMessage ?: "Errore chiamata Gemini"
+                VocalFoxSfxManager.playError(context)
+                errorMessage = err.message ?: if (isIt) {
+                    "Tutti i modelli AI sono momentaneamente occupati, riprova tra pochi secondi."
+                } else {
+                    "All AI models are currently busy, please try again in a few seconds."
+                }
             }
         }
     }
@@ -208,6 +224,7 @@ fun LiveConversationScreen(
                     .clip(CircleShape)
                     .background(colors.accent)
                     .clickable {
+                        VocalFoxSfxManager.playTileTap(context)
                         GeminiHandoffHelper.launchGeminiAppWithPrompt(
                             context = context,
                             targetLanguageCode = currentPack.languageCode,
@@ -242,7 +259,10 @@ fun LiveConversationScreen(
                         .clip(RoundedCornerShape(12.dp))
                         .background(if (active) colors.accent else colors.card)
                         .border(1.dp, if (active) colors.accent else colors.hairline, RoundedCornerShape(12.dp))
-                        .clickable { selectedScenario = scen }
+                        .clickable {
+                            VocalFoxSfxManager.playTileTap(context)
+                            selectedScenario = scen
+                        }
                         .padding(horizontal = 14.dp, vertical = 8.dp)
                 ) {
                     Text(
@@ -262,14 +282,14 @@ fun LiveConversationScreen(
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(12.dp))
                     .background(colors.card)
-                    .border(1.dp, colors.negative, RoundedCornerShape(12.dp))
-                    .clickable { onOpenSettingsForApiKey() }
+                    .border(1.dp, colors.warning, RoundedCornerShape(12.dp))
+                    .clickable { errorMessage = null }
                     .padding(12.dp)
             ) {
                 Text(
                     text = errorMessage!!,
                     style = VocalFoxType.SecondaryCaption,
-                    color = colors.negative
+                    color = colors.primaryText
                 )
             }
             Spacer(modifier = Modifier.height(8.dp))
@@ -423,6 +443,7 @@ fun LiveConversationScreen(
                     .background(colors.raised)
                     .border(1.dp, colors.hairline, CircleShape)
                     .clickable {
+                        VocalFoxSfxManager.playTileTap(context)
                         try {
                             val localeTag = if (currentPack.languageCode == "de") "de-DE" else "es-ES"
                             val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
