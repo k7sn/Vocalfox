@@ -22,7 +22,6 @@ import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
@@ -31,7 +30,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.AutoAwesome
-import androidx.compose.material.icons.outlined.Key
 import androidx.compose.material.icons.outlined.Mic
 import androidx.compose.material.icons.outlined.Send
 import androidx.compose.material.icons.outlined.SlowMotionVideo
@@ -78,9 +76,6 @@ fun LiveConversationScreen(
     val colors = VocalFoxTheme.colors
     val scope = rememberCoroutineScope()
     val isIt = systemLang == SystemLang.IT
-
-    var apiKey by remember { mutableStateOf(prefs.getString("gemini_api_key", "").orEmpty()) }
-    var showInlineKeyEditor by remember { mutableStateOf(false) }
 
     val scenarios = remember(isIt) {
         if (isIt) {
@@ -130,9 +125,13 @@ fun LiveConversationScreen(
     fun sendUserTurn(textToSend: String) {
         val trimmed = textToSend.trim()
         if (trimmed.isBlank() || isLoading) return
-        if (apiKey.isBlank()) {
-            showInlineKeyEditor = true
-            errorMessage = if (isIt) "Inserisci una API Key oppure tocca 'Parla su Gemini' in alto per usare l'app Gemini gratis." else "Enter an API Key or tap 'Open Gemini' above to use the official Gemini app."
+        val currentApiKey = prefs.getString("gemini_api_key", "").orEmpty().trim()
+        if (currentApiKey.isBlank()) {
+            errorMessage = if (isIt) {
+                "Per chattare qui inserisci la tua API Key nella scheda Profilo, oppure tocca l'icona ✨ in alto a destra per parlare subito nell'app Gemini."
+            } else {
+                "Set your API Key in the Profile tab to chat here, or tap the ✨ icon above to speak in the Gemini app."
+            }
             return
         }
 
@@ -143,7 +142,7 @@ fun LiveConversationScreen(
 
         scope.launch {
             val res = GeminiLiveTutorClient.sendMessageToTutor(
-                apiKey = apiKey,
+                apiKey = currentApiKey,
                 targetLanguageCode = currentPack.languageCode,
                 cefrLevel = selectedCefr,
                 systemLang = systemLang,
@@ -184,7 +183,7 @@ fun LiveConversationScreen(
     ) {
         Spacer(modifier = Modifier.height(10.dp))
 
-        // Top Header + Pulsante diretto App Google Gemini + Pulsante API Key
+        // Header Pulito: Titolo a sinistra + SOLO Pulsante Circolare 44.dp con icona Sparkle di Gemini a destra
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
@@ -203,117 +202,32 @@ fun LiveConversationScreen(
                 )
             }
 
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            Box(
+                modifier = Modifier
+                    .size(44.dp)
+                    .clip(CircleShape)
+                    .background(colors.accent)
+                    .clickable {
+                        GeminiHandoffHelper.launchGeminiAppWithPrompt(
+                            context = context,
+                            targetLanguageCode = currentPack.languageCode,
+                            cefrLevel = selectedCefr,
+                            systemLang = systemLang,
+                            topic = selectedScenario
+                        )
+                    },
+                contentAlignment = Alignment.Center
             ) {
-                // Pulsante Diretto App Google Gemini (Zero API Key richiesta!)
-                Row(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(14.dp))
-                        .background(colors.accent)
-                        .clickable {
-                            GeminiHandoffHelper.launchGeminiAppWithPrompt(
-                                context = context,
-                                targetLanguageCode = currentPack.languageCode,
-                                cefrLevel = selectedCefr,
-                                systemLang = systemLang,
-                                topic = selectedScenario
-                            )
-                        }
-                        .padding(horizontal = 12.dp, vertical = 9.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(6.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Outlined.AutoAwesome,
-                        contentDescription = null,
-                        tint = colors.onAccent,
-                        modifier = Modifier.size(16.dp)
-                    )
-                    Text(
-                        text = if (isIt) "Parla su Gemini" else "Open Gemini",
-                        style = VocalFoxType.BodyMedium,
-                        color = colors.onAccent
-                    )
-                }
-
-                Box(
-                    modifier = Modifier
-                        .size(40.dp)
-                        .clip(CircleShape)
-                        .background(colors.card)
-                        .border(1.dp, if (showInlineKeyEditor) colors.accent else colors.hairline, CircleShape)
-                        .clickable { showInlineKeyEditor = !showInlineKeyEditor },
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(Icons.Outlined.Key, contentDescription = "API Key", tint = colors.secondaryText, modifier = Modifier.size(18.dp))
-                }
+                Icon(
+                    imageVector = Icons.Outlined.AutoAwesome,
+                    contentDescription = "Gemini Live",
+                    tint = colors.onAccent,
+                    modifier = Modifier.size(22.dp)
+                )
             }
         }
 
         Spacer(modifier = Modifier.height(10.dp))
-
-        if (showInlineKeyEditor) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(16.dp))
-                    .background(colors.card)
-                    .border(1.5.dp, colors.accent, RoundedCornerShape(16.dp))
-                    .padding(14.dp),
-                verticalArrangement = Arrangement.spacedBy(10.dp)
-            ) {
-                Text(
-                    text = if (isIt) "Chiave API Google Gemini (Opzionale per chat interna)" else "Google Gemini API Key (Optional for in-app chat)",
-                    style = VocalFoxType.BodyMedium,
-                    color = colors.primaryText
-                )
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .weight(1f)
-                            .clip(RoundedCornerShape(10.dp))
-                            .background(colors.raised)
-                            .padding(horizontal = 12.dp, vertical = 10.dp)
-                    ) {
-                        if (apiKey.isEmpty()) {
-                            Text("AIzaSy...", style = VocalFoxType.MetaMono, color = colors.mutedText)
-                        }
-                        BasicTextField(
-                            value = apiKey,
-                            onValueChange = { apiKey = it },
-                            textStyle = VocalFoxType.MetaMono.copy(color = colors.primaryText),
-                            cursorBrush = SolidColor(colors.accent),
-                            singleLine = true,
-                            modifier = Modifier.fillMaxWidth()
-                        )
-                    }
-                    Box(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(10.dp))
-                            .background(colors.accent)
-                            .clickable {
-                                prefs.edit().putString("gemini_api_key", apiKey.trim()).apply()
-                                showInlineKeyEditor = false
-                                errorMessage = null
-                            }
-                            .padding(horizontal = 14.dp, vertical = 10.dp)
-                    ) {
-                        Text(
-                            text = if (isIt) "Salva" else "Save",
-                            style = VocalFoxType.BodyMedium,
-                            color = colors.onAccent
-                        )
-                    }
-                }
-            }
-            Spacer(modifier = Modifier.height(10.dp))
-        }
 
         Row(
             modifier = Modifier
@@ -343,12 +257,22 @@ fun LiveConversationScreen(
         Spacer(modifier = Modifier.height(10.dp))
 
         if (errorMessage != null) {
-            Text(
-                text = errorMessage!!,
-                style = VocalFoxType.SecondaryCaption,
-                color = colors.negative,
-                modifier = Modifier.padding(vertical = 4.dp)
-            )
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(colors.card)
+                    .border(1.dp, colors.negative, RoundedCornerShape(12.dp))
+                    .clickable { onOpenSettingsForApiKey() }
+                    .padding(12.dp)
+            ) {
+                Text(
+                    text = errorMessage!!,
+                    style = VocalFoxType.SecondaryCaption,
+                    color = colors.negative
+                )
+            }
+            Spacer(modifier = Modifier.height(8.dp))
         }
 
         LazyColumn(
@@ -485,7 +409,6 @@ fun LiveConversationScreen(
             item { Spacer(modifier = Modifier.height(6.dp)) }
         }
 
-        // FIX 1: Barra di input posizionata subito sopra la bottomBar dello Scaffold (senza i 104.dp di vuoto!)
         Row(
             modifier = Modifier
                 .fillMaxWidth()

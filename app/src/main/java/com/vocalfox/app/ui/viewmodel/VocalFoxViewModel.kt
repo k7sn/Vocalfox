@@ -1,6 +1,7 @@
 package com.vocalfox.app.ui.viewmodel
 
 import android.app.Application
+import android.content.Context
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.vocalfox.app.audio.PiperTtsManager
@@ -41,21 +42,33 @@ data class WritingEvaluationFeedback(
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class VocalFoxViewModel(application: Application) : AndroidViewModel(application) {
+    private val prefs = application.getSharedPreferences("vocalfox_prefs", Context.MODE_PRIVATE)
     private val database = VocalFoxDatabase.getInstance(application)
     private val repository = VocalFoxRepository(database.dao(), PackLoader(application))
     val ttsManager = PiperTtsManager(application)
     private val pronunciationEvaluator = PronunciationEvaluator()
 
-    private val _systemLang = MutableStateFlow(SystemLang.EN)
+    private val initialSysLang: SystemLang = run {
+        val saved = prefs.getString("system_lang", SystemLang.IT.name) ?: SystemLang.IT.name
+        SystemLang.entries.firstOrNull { it.name == saved } ?: SystemLang.IT
+    }
+    private val initialLangCode: String = prefs.getString("target_lang", "es") ?: "es"
+    private val initialCefr: CefrLevel = run {
+        val saved = prefs.getString("selected_cefr", CefrLevel.A1.name) ?: CefrLevel.A1.name
+        CefrLevel.entries.firstOrNull { it.name == saved } ?: CefrLevel.A1
+    }
+    private val initialDark: Boolean = prefs.getBoolean("dark_mode", false)
+
+    private val _systemLang = MutableStateFlow(initialSysLang)
     val systemLang: StateFlow<SystemLang> = _systemLang.asStateFlow()
 
-    private val _isDarkMode = MutableStateFlow(false)
+    private val _isDarkMode = MutableStateFlow(initialDark)
     val isDarkMode: StateFlow<Boolean> = _isDarkMode.asStateFlow()
 
-    private val _selectedLanguageCode = MutableStateFlow("es")
+    private val _selectedLanguageCode = MutableStateFlow(initialLangCode)
     val selectedLanguageCode: StateFlow<String> = _selectedLanguageCode.asStateFlow()
 
-    private val _selectedCefr = MutableStateFlow(CefrLevel.A1)
+    private val _selectedCefr = MutableStateFlow(initialCefr)
     val selectedCefr: StateFlow<CefrLevel> = _selectedCefr.asStateFlow()
 
     private val _showFurigana = MutableStateFlow(true)
@@ -76,7 +89,7 @@ class VocalFoxViewModel(application: Application) : AndroidViewModel(application
 
     val currentPack: StateFlow<LanguagePack> = _selectedLanguageCode
         .combine(_selectedCefr) { code, _ -> repository.getPack(code) }
-        .stateIn(viewModelScope, SharingStarted.Eagerly, repository.getPack("es"))
+        .stateIn(viewModelScope, SharingStarted.Eagerly, repository.getPack(initialLangCode))
 
     val progressList: StateFlow<List<UserProgressEntity>> = _selectedLanguageCode
         .flatMapLatest { code -> repository.observeProgress(code) }
@@ -101,20 +114,24 @@ class VocalFoxViewModel(application: Application) : AndroidViewModel(application
 
     fun setSystemLanguage(lang: SystemLang) {
         _systemLang.value = lang
+        prefs.edit().putString("system_lang", lang.name).apply()
     }
 
     fun toggleDarkMode(enabled: Boolean) {
         _isDarkMode.value = enabled
+        prefs.edit().putBoolean("dark_mode", enabled).apply()
     }
 
     fun selectLanguage(code: String) {
         _selectedLanguageCode.value = code
         _latestPronunciationResult.value = null
+        prefs.edit().putString("target_lang", code).apply()
     }
 
     fun selectCefr(level: CefrLevel) {
         _selectedCefr.value = level
         _latestPronunciationResult.value = null
+        prefs.edit().putString("selected_cefr", level.name).apply()
     }
 
     fun toggleFurigana(enabled: Boolean) {

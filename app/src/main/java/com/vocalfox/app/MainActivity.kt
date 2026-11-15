@@ -37,7 +37,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModelProvider
@@ -103,7 +102,6 @@ private fun VocalFoxRootApp(viewModel: VocalFoxViewModel) {
     var activeGuidedUnit by remember { mutableStateOf<GuidedUnitBundle?>(null) }
 
     LaunchedEffect(Unit) {
-        viewModel.setSystemLanguage(SystemLang.IT)
         delay(2200L)
         showSplash = false
     }
@@ -253,10 +251,6 @@ private fun VocalFoxRootApp(viewModel: VocalFoxViewModel) {
     }
 }
 
-/**
- * Barra inferiore pulita, allineata e piatta (stile Duolingo + heydamir-unslop)
- * Integrata nello Scaffold così non copre MAI il testo delle card sottostanti.
- */
 @Composable
 private fun CleanBottomNavigationBar(
     activeTab: MainTab,

@@ -20,11 +20,8 @@ data class TutorChatMessage(
 )
 
 /**
- * Direct REST client for Google Gemini Live AI Conversation Tutor (`gemini-2.5-flash` with fallback to `gemini-2.0-flash`).
- * Returns structured JSON containing:
- * - `reply`: The tutor's natural response in Spanish or German at the user's CEFR level
- * - `translation`: Translation in Italian or English
- * - `correction`: Constructive grammar/vocabulary correction of the user's message
+ * Direct REST client for Google Gemini Live AI Conversation Tutor.
+ * Uses `models/gemini-3.8-flash` primarily, with automatic fallback to `models/gemini-2.5-flash` on 404.
  */
 object GeminiLiveTutorClient {
 
@@ -46,7 +43,7 @@ object GeminiLiveTutorClient {
         val uiLangName = if (systemLang == SystemLang.IT) "Italian" else "English"
 
         val systemInstruction = """
-            You are VocalFox, a warm, encouraging native $targetLangName language tutor.
+            You are Vocalfox, a warm, encouraging native $targetLangName language tutor.
             The student is currently at CEFR level ${cefrLevel.name}.
             Current roleplay scenario: "$scenarioTitle".
             Respond ONLY with a valid JSON object with exactly three string fields:
@@ -88,7 +85,7 @@ object GeminiLiveTutorClient {
             )
         }
 
-        val modelsToTry = listOf("gemini-2.5-flash", "gemini-2.0-flash")
+        val modelsToTry = listOf("gemini-3.8-flash", "gemini-2.5-flash")
         var lastError: Throwable? = null
 
         for (modelName in modelsToTry) {
@@ -108,7 +105,11 @@ object GeminiLiveTutorClient {
 
                 val code = conn.responseCode
                 val stream = if (code in 200..299) conn.inputStream else conn.errorStream
-                val rawResponse = BufferedReader(InputStreamReader(stream, Charsets.UTF_8)).use { it.readText() }
+                val rawResponse = if (stream != null) {
+                    BufferedReader(InputStreamReader(stream, Charsets.UTF_8)).use { it.readText() }
+                } else {
+                    ""
+                }
 
                 if (code in 200..299) {
                     val root = JSONObject(rawResponse)
@@ -135,6 +136,8 @@ object GeminiLiveTutorClient {
                     )
                 } else {
                     lastError = RuntimeException("HTTP $code: $rawResponse")
+                    // If 404 Not Found on primary model, loop continues to fallback model
+                    if (code != 404) break
                 }
             } catch (e: Throwable) {
                 lastError = e

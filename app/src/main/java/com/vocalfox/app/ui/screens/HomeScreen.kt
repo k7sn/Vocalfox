@@ -52,6 +52,9 @@ import com.vocalfox.app.ui.theme.VocalFoxMascot
 import com.vocalfox.app.ui.theme.VocalFoxTheme
 import com.vocalfox.app.ui.theme.VocalFoxType
 import com.vocalfox.app.ui.theme.VocalFoxWordmark
+import java.time.Instant
+import java.time.LocalDate
+import java.time.ZoneId
 
 @Composable
 fun HomeScreen(
@@ -90,8 +93,13 @@ fun HomeScreen(
 
     val dailyTarget = 4
     val completedToday = remember(progressList) {
-        val todayDayIndex = System.currentTimeMillis() / 86_400_000L
-        progressList.count { (it.completedAtEpochMs / 86_400_000L) == todayDayIndex && it.bestScore >= 70 }
+        val zone = ZoneId.systemDefault()
+        val today = LocalDate.now(zone)
+        progressList.count {
+            it.bestScore >= 70 &&
+                it.completedAtEpochMs > 0L &&
+                Instant.ofEpochMilli(it.completedAtEpochMs).atZone(zone).toLocalDate() == today
+        }
     }
     val dailyProgressRatio = (completedToday.toFloat() / dailyTarget.toFloat()).coerceIn(0f, 1f)
 
@@ -103,7 +111,6 @@ fun HomeScreen(
             .padding(horizontal = 20.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        // TOP BAR: Immagine Vocalfox a sinistra + Badge Lingua e Streak a destra
         item {
             Spacer(modifier = Modifier.height(8.dp))
             Row(
@@ -117,7 +124,6 @@ fun HomeScreen(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    // Badge corso attivo (cliccabile per cambiare lingua nel Profilo)
                     Box(
                         modifier = Modifier
                             .clip(RoundedCornerShape(12.dp))
@@ -133,7 +139,6 @@ fun HomeScreen(
                         )
                     }
 
-                    // Streak reale
                     Row(
                         modifier = Modifier
                             .clip(RoundedCornerShape(12.dp))
@@ -159,7 +164,6 @@ fun HomeScreen(
             }
         }
 
-        // SELETTORE LIVELLO PULITO (A1, A2, B1, B2)
         item {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -200,7 +204,6 @@ fun HomeScreen(
             }
         }
 
-        // OBIETTIVO GIORNALIERO COMPATTO
         item {
             Row(
                 modifier = Modifier
@@ -261,7 +264,6 @@ fun HomeScreen(
             }
         }
 
-        // FILTRO CAPITOLI (Tutte, 1-10, 11-20, 21-30, 31-40, 41-50)
         item {
             val chapterFilters = listOf(
                 0 to (if (isIt) "Tutte" else "All"),
@@ -298,7 +300,6 @@ fun HomeScreen(
             }
         }
 
-        // LISTA DELLE 50 UNITÀ (Card pulite, zero testo spezzato in verticale!)
         itemsIndexed(displayedUnits, key = { _, u -> u.grammarExercise.id }) { idx, unit ->
             val isCompleted = progressList.any { it.itemKey == unit.grammarExercise.id && it.bestScore >= 70 }
             val isNextActive = idx == 0 || !isCompleted
@@ -344,7 +345,6 @@ fun HomeScreen(
                     }
                 }
 
-                // Card Unità Pulita
                 Row(
                     modifier = Modifier
                         .weight(1f)
@@ -387,7 +387,6 @@ fun HomeScreen(
 
                         Spacer(modifier = Modifier.height(2.dp))
 
-                        // Bottone orizzontale pulito che non va MAI a capo lettera per lettera
                         Row(
                             modifier = Modifier
                                 .clip(RoundedCornerShape(10.dp))
@@ -425,20 +424,21 @@ fun HomeScreen(
 }
 
 private fun calculateConsecutiveDayStreak(progressList: List<UserProgressEntity>): Int {
-    val completedDays = progressList
+    val zone = ZoneId.systemDefault()
+    val completedDates = progressList
         .filter { it.bestScore >= 70 && it.completedAtEpochMs > 0L }
-        .map { it.completedAtEpochMs / 86_400_000L }
+        .map { Instant.ofEpochMilli(it.completedAtEpochMs).atZone(zone).toLocalDate() }
         .distinct()
         .sortedDescending()
 
-    if (completedDays.isEmpty()) return 0
+    if (completedDates.isEmpty()) return 0
 
-    val today = System.currentTimeMillis() / 86_400_000L
-    if (completedDays.first() < today - 1) return 0
+    val today = LocalDate.now(zone)
+    if (completedDates.first().isBefore(today.minusDays(1))) return 0
 
     var streak = 1
-    for (i in 0 until completedDays.lastIndex) {
-        if (completedDays[i] - completedDays[i + 1] == 1L) {
+    for (i in 0 until completedDates.lastIndex) {
+        if (completedDates[i].minusDays(1) == completedDates[i + 1]) {
             streak++
         } else {
             break

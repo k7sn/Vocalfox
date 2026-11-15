@@ -10,6 +10,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -56,7 +57,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import com.vocalfox.app.audio.GeminiHandoffHelper
@@ -70,6 +73,7 @@ import com.vocalfox.app.domain.model.WritingExercise
 import com.vocalfox.app.ui.i18n.SystemLang
 import com.vocalfox.app.ui.i18n.UiStrings
 import com.vocalfox.app.ui.theme.AnimatedWebpSplashPlayer
+import com.vocalfox.app.ui.theme.MascotBitmapCache
 import com.vocalfox.app.ui.theme.MascotPedagogicalBanner
 import com.vocalfox.app.ui.theme.MascotState
 import com.vocalfox.app.ui.theme.VocalFoxMascot
@@ -92,15 +96,18 @@ data class GuidedUnitBundle(
     val pronunciationDrill: PronunciationDrill
 )
 
+/**
+ * Splash Screen con sfondo Nero Puro (#000000) così il riquadro nero dell'animazione WebP
+ * si fonde alla perfezione ("blend in") senza alcun bordo visibile, seguito dal logotipo Vocalfox.
+ */
 @Composable
 fun SplashScreenOverlay(
     onFinished: () -> Unit
 ) {
-    val colors = VocalFoxTheme.colors
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(colors.background)
+            .background(Color(0xFF000000))
             .clickable { onFinished() },
         contentAlignment = Alignment.Center
     ) {
@@ -114,6 +121,13 @@ fun SplashScreenOverlay(
     }
 }
 
+/**
+ * Primo Avvio:
+ * - Step 0: Schermata di Benvenuto in stile Duolingo (`6230cce907f5a532aa4b175e_5d38993213523202613a6180_Duo-1.png`)
+ *   con `welcome_kit.png`, `VocalFoxWordmark`, sottotitolo e i due pulsanti "INIZIA" e "HO GIÀ UN LIVELLO / SALTA AL PERCORSO".
+ * - Step 1: Configurazione lingua + partenza da zero o test di piazzamento.
+ * - Step 2: Scelta diretta lingua + livello per chi ha premuto "HO GIÀ UN LIVELLO / SALTA AL PERCORSO".
+ */
 @Composable
 fun OnboardingScreen(
     allPacks: Map<String, LanguagePack>,
@@ -124,16 +138,190 @@ fun OnboardingScreen(
     onSelectTargetLang: (String) -> Unit,
     onCompleteOnboarding: (CefrLevel) -> Unit
 ) {
+    val context = LocalContext.current
     val colors = VocalFoxTheme.colors
+    val isIt = systemLang == SystemLang.IT
+
+    var onboardingPhase by remember { mutableIntStateOf(0) } // 0 = Welcome Landing, 1 = Setup/Test, 2 = Direct Level Picker
     var inPlacementMode by remember { mutableStateOf(false) }
     var questionIdx by remember { mutableIntStateOf(0) }
     var correctCount by remember { mutableIntStateOf(0) }
+
+    val welcomeKitBitmap = remember {
+        MascotBitmapCache.getTrimmedBitmap(context, "welcome_kit", stripBackground = true)
+    }
 
     val pack = allPacks[selectedLangCode] ?: allPacks.values.first()
     val placementQuestions = remember(pack.languageCode) {
         CefrLevel.entries.mapNotNull { lvl ->
             pack.grammarExercises.firstOrNull { it.cefr == lvl }
         }
+    }
+
+    if (onboardingPhase == 0) {
+        // SCHERMATA DI BENVENUTO ISPIRATA A DUO-1.PNG
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(if (colors.isDark) colors.background else Color.White)
+                .statusBarsPadding()
+                .navigationBarsPadding()
+                .padding(horizontal = 24.dp, vertical = 20.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.SpaceBetween
+        ) {
+            Spacer(modifier = Modifier.height(24.dp))
+
+            // Blocco Centrale: welcome_kit.png + VocalFoxWordmark + Sottotitolo
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(18.dp)
+            ) {
+                if (welcomeKitBitmap != null) {
+                    Image(
+                        bitmap = welcomeKitBitmap,
+                        contentDescription = "Vocalfox Welcome",
+                        contentScale = ContentScale.Fit,
+                        modifier = Modifier.size(210.dp)
+                    )
+                } else {
+                    VocalFoxMascot(
+                        state = MascotState.CELEBRATE,
+                        size = 200.dp
+                    )
+                }
+
+                VocalFoxWordmark(height = 42.dp)
+
+                Text(
+                    text = if (isIt) "Impara una lingua gratuitamente. Per sempre." else "Learn a language for free. Forever.",
+                    style = VocalFoxType.Body,
+                    color = colors.secondaryText,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.padding(horizontal = 16.dp)
+                )
+            }
+
+            // Blocco Inferiore: 2 Pulsanti a tutta larghezza (height = 54.dp, RoundedCornerShape(16.dp))
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(54.dp)
+                        .clip(RoundedCornerShape(16.dp))
+                        .background(colors.accent)
+                        .clickable { onboardingPhase = 1 },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = if (isIt) "INIZIA" else "GET STARTED",
+                        style = VocalFoxType.SectionTitle,
+                        color = colors.onAccent
+                    )
+                }
+
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(54.dp)
+                        .clip(RoundedCornerShape(16.dp))
+                        .background(if (colors.isDark) colors.card else Color.White)
+                        .border(1.5.dp, colors.hairline, RoundedCornerShape(16.dp))
+                        .clickable { onboardingPhase = 2 },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = if (isIt) "HO GIÀ UN LIVELLO / SALTA AL PERCORSO" else "I ALREADY HAVE A LEVEL / SKIP TO PATH",
+                        style = VocalFoxType.BodyMedium,
+                        color = colors.accent
+                    )
+                }
+            }
+        }
+        return
+    }
+
+    if (onboardingPhase == 2) {
+        // Scelta diretta di lingua e livello senza test
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(colors.background)
+                .statusBarsPadding()
+                .navigationBarsPadding()
+                .verticalScroll(rememberScrollState())
+                .padding(24.dp),
+            verticalArrangement = Arrangement.spacedBy(20.dp)
+        ) {
+            VocalFoxWordmark(height = 34.dp)
+
+            Text(
+                text = strings.chooseTargetLanguageLabel,
+                style = VocalFoxType.SectionTitle,
+                color = colors.primaryText
+            )
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                allPacks.values.forEach { p ->
+                    val isSelected = p.languageCode == selectedLangCode
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(14.dp))
+                            .background(if (isSelected) colors.card else colors.raised)
+                            .border(
+                                width = if (isSelected) 2.dp else 1.dp,
+                                color = if (isSelected) colors.accent else colors.hairline,
+                                shape = RoundedCornerShape(14.dp)
+                            )
+                            .clickable { onSelectTargetLang(p.languageCode) }
+                            .padding(16.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = p.languageName.get(systemLang),
+                            style = VocalFoxType.SectionTitle,
+                            color = colors.primaryText
+                        )
+                        if (isSelected) {
+                            Icon(Icons.Outlined.Check, null, tint = colors.accent)
+                        }
+                    }
+                }
+            }
+
+            Text(
+                text = if (isIt) "Scegli il livello da cui partire" else "Choose your starting level",
+                style = VocalFoxType.SectionTitle,
+                color = colors.primaryText
+            )
+            CefrLevel.entries.forEach { lvl ->
+                val desc = when (lvl) {
+                    CefrLevel.A1 -> if (isIt) "A1 · Principiante (Prime parole e basi)" else "A1 · Beginner"
+                    CefrLevel.A2 -> if (isIt) "A2 · Elementare (Vita quotidiana e passato)" else "A2 · Elementary"
+                    CefrLevel.B1 -> if (isIt) "B1 · Intermedio (Conversazione e opinioni)" else "B1 · Intermediate"
+                    CefrLevel.B2 -> if (isIt) "B2 · Avanzato (Padronanza e sfumature)" else "B2 · Upper Intermediate"
+                }
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(14.dp))
+                        .background(colors.card)
+                        .border(1.dp, colors.hairline, RoundedCornerShape(14.dp))
+                        .clickable { onCompleteOnboarding(lvl) }
+                        .padding(18.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(desc, style = VocalFoxType.BodyMedium, color = colors.primaryText)
+                    Icon(Icons.Outlined.ArrowForward, null, tint = colors.accent)
+                }
+            }
+        }
+        return
     }
 
     Column(
@@ -499,7 +687,6 @@ fun GuidedLessonScreen(
             label = "step_transition"
         ) { step ->
             when (step) {
-                // STEP 0: Vocabulary & Concept Discovery
                 0 -> {
                     Column(
                         modifier = Modifier
@@ -581,7 +768,6 @@ fun GuidedLessonScreen(
                     }
                 }
 
-                // STEP 1: Multiple-Choice Quiz (Zero TTS Spoiler)
                 1 -> {
                     val ex = bundle.grammarExercise
                     val options = remember(ex.id) {
@@ -685,7 +871,6 @@ fun GuidedLessonScreen(
                     }
                 }
 
-                // STEP 2: Meaning & Inflection Comprehension Check
                 2 -> {
                     val tokens = bundle.grammarExercise.syntaxTokens
                     val targetToken = tokens.firstOrNull()
@@ -776,7 +961,6 @@ fun GuidedLessonScreen(
                     }
                 }
 
-                // STEP 3: FIX 2 — Interactive Sentence Builder with Per-Word Green/Red Outline
                 3 -> {
                     val wrt = bundle.writingExercise
                     val targetSentence = wrt.referenceTargets.firstOrNull().orEmpty()
@@ -832,7 +1016,6 @@ fun GuidedLessonScreen(
                             )
                         }
 
-                        // Assembled Sentence Area: Green outline for right word in right slot, Red for wrong slot
                         FlowRow(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -884,7 +1067,6 @@ fun GuidedLessonScreen(
                             }
                         }
 
-                        // Shuffled Word Bank
                         FlowRow(
                             horizontalArrangement = Arrangement.spacedBy(10.dp),
                             verticalArrangement = Arrangement.spacedBy(10.dp)
@@ -948,7 +1130,6 @@ fun GuidedLessonScreen(
                     }
                 }
 
-                // STEP 4: Final Pronunciation & Shadowing
                 4 -> {
                     val drill = bundle.pronunciationDrill
                     Column(
@@ -1099,7 +1280,6 @@ fun GuidedLessonScreen(
                     }
                 }
 
-                // STEP 5: Celebratory Completion Screen + Direct Handoff to Google Gemini App
                 else -> {
                     val langCode = if (bundle.grammarExercise.id.startsWith("de")) "de" else "es"
                     Column(
@@ -1126,7 +1306,6 @@ fun GuidedLessonScreen(
                         )
                         Spacer(modifier = Modifier.height(24.dp))
 
-                        // Pulsante per continuare a praticare l'argomento della lezione nell'app Google Gemini
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
